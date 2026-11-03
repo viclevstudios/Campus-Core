@@ -103,13 +103,51 @@ export function splitSubjects(events) {
   return [...subjects.values()].sort((a, b) => a.title.localeCompare(b.title, 'de') || a.source.localeCompare(b.source, 'de'));
 }
 
+// Only an explicit saved group joins different calendar titles.
+export function editableSubjects(events, settings = {}, groups = []) {
+  const raw = splitSubjects(events);
+  const available = new Set(raw.map(s => s.source)), used = new Set();
+  const result = [];
+  for (const group of groups) {
+    if (!group || typeof group.id !== 'string' || !group.name?.trim() || !Array.isArray(group.sources)) continue;
+    const sources = [...new Set(group.sources)].filter(source => available.has(source) && !used.has(source));
+    if (!sources.length) continue;
+    sources.forEach(source => used.add(source));
+    result.push({ source: group.id, title: group.name.trim(), sources, grouped: true });
+  }
+  for (const subject of raw) if (!used.has(subject.source)) {
+    const config = Object.hasOwn(settings, subject.source) ? settings[subject.source] : {};
+    result.push({ ...subject, title: config.subject?.trim() || subject.title, sources: [subject.source], grouped: false });
+  }
+  return result.sort((a, b) => a.title.localeCompare(b.title, 'de') || a.source.localeCompare(b.source, 'de'));
+}
+
+export function combineSubjects(events, settings, groups, selected, name, id) {
+  const choices = editableSubjects(events, settings, groups);
+  const selectedIds = [...new Set(selected)];
+  const picked = choices.filter(s => selectedIds.includes(s.source));
+  if (picked.length < 2 || picked.length !== selectedIds.length) throw new Error('Bitte mindestens zwei Fächer auswählen.');
+  if (!name.trim()) throw new Error('Bitte einen gemeinsamen Fachnamen eingeben.');
+  if (!id || choices.some(s => s.source === id)) throw new Error('Die Fachgruppe konnte nicht angelegt werden.');
+  return [...groups.filter(g => !selectedIds.includes(g.id)), { id, name: name.trim(), sources: picked.flatMap(s => s.sources) }];
+}
+
+export function partitionPart(event, config = {}) {
+  const value = Object.hasOwn(config.assignments || {}, event.id) ? config.assignments[event.id] : config.defaultPart;
+  return config.parts?.includes(value) ? value : '';
+}
+
+export function setPartitionDefault(config, part) {
+  if (part && !config.parts?.includes(part)) throw new Error('Bitte ein vorhandenes Unterfach auswählen.');
+  return { ...config, defaultPart: part };
+}
+
 export function subjectPartition(events, config = {}) {
   const parts = Array.isArray(config.parts) ? config.parts.map(p => String(p).trim()) : [];
   const configured = parts.length === 2 && parts.every(Boolean) && parts[0].toLocaleLowerCase('de') !== parts[1].toLocaleLowerCase('de');
   const enabled = configured && config.splitEnabled !== false;
-  const assignments = config.assignments || {};
-  const assigned = configured ? events.filter(e => parts.includes(assignments[e.id])).length : 0;
-  const emptyParts = configured ? parts.filter(part => !events.some(e => assignments[e.id] === part)) : [];
+  const assigned = configured ? events.filter(e => partitionPart(e, config)).length : 0;
+  const emptyParts = configured ? parts.filter(part => !events.some(e => partitionPart(e, config) === part)) : [];
   return { parts: configured ? parts : [], configured, enabled, assigned, total: events.length, unassigned: events.length - assigned, emptyParts, complete: enabled && events.length > 0 && assigned === events.length && !emptyParts.length };
 }
 
@@ -123,27 +161,36 @@ export function configurePartition(events, config, names) {
     const index = previous.indexOf(value);
     if (index === 0 || index === 1) assignments[event.id] = candidate.parts[index];
     else if (candidate.parts.includes(value)) assignments[event.id] = value;
+    else if (value === '') assignments[event.id] = '';
   }
-  return { ...config, parts: candidate.parts, assignments, splitEnabled: true };
+  const defaultIndex = previous.indexOf(config.defaultPart);
+  const defaultPart = defaultIndex >= 0 ? candidate.parts[defaultIndex] : candidate.parts.includes(config.defaultPart) ? config.defaultPart : '';
+  return { ...config, parts: candidate.parts, assignments, defaultPart, splitEnabled: true };
 }
 
 export function buildBuckets(events, settings = {}, options = {}) {
-  const { from = '', to = '', includeExams = false, mode = 'joined', absences = {}, preferences = {} } = options;
+  const { from = '', to = '', includeExams = false, mode = 'joined', absences = {}, preferences = {}, groups = [] } = options;
   const buckets = new Map();
+  const subjects = editableSubjects(events, settings, groups);
+  const courseBySource = new Map(subjects.flatMap(s => s.sources.map(source => [source, s])));
   const bySource = new Map();
   for (const event of events) {
-    if (!bySource.has(event.source)) bySource.set(event.source, []);
-    bySource.get(event.source).push(event);
+    const source = courseBySource.get(event.source)?.source || event.source;
+    if (!bySource.has(source)) bySource.set(source, []);
+    bySource.get(source).push(event);
   }
   const partitions = new Map([...bySource].map(([source, list]) => [source, subjectPartition(list, Object.hasOwn(settings, source) ? settings[source] : {})]));
   for (const event of events) {
     if ((from && event.date < from) || (to && event.date > to) || (!includeExams && event.exam)) continue;
-    const config = Object.hasOwn(settings, event.source) ? settings[event.source] : {};
-    const subject = config.subject?.trim() || event.defaultSubject;
-    const partition = partitions.get(event.source);
+    const course = courseBySource.get(event.source);
+    const source = course?.source || event.source;
+    const config = Object.hasOwn(settings, source) ? settings[source] : {};
+    const subject = course?.title || config.subject?.trim() || event.defaultSubject;
+    const partition = partitions.get(source);
     const separate = mode === 'split' && partition.complete;
-    const part = separate ? config.assignments[event.id] : '';
-    const key = JSON.stringify(separate ? [subject, part] : [subject]);
+    const part = separate ? partitionPart(event, config) : '';
+    const identity = course?.grouped ? [subject, 'group', source] : [subject];
+    const key = JSON.stringify(separate ? [...identity, part] : identity);
     if (!buckets.has(key)) buckets.set(key, { key, subject, part, splitPending: false, events: [], sources: new Set(), parts: new Set(), kinds: new Set() });
     const bucket = buckets.get(key);
     bucket.splitPending ||= mode === 'split' && partition.enabled && !partition.complete;
@@ -156,10 +203,20 @@ export function semesterOptions(events) {
   if (!events.length) return [];
   const years = events.map(e => Number(e.date.slice(0, 4)));
   const result = [];
+  const monday = (year, month) => {
+    const date = new Date(Date.UTC(year, month - 1, 1));
+    date.setUTCDate(date.getUTCDate() - (date.getUTCDay() + 6) % 7);
+    return date.toISOString().slice(0, 10);
+  };
+  const previousDay = date => {
+    const value = new Date(`${date}T12:00:00Z`);
+    value.setUTCDate(value.getUTCDate() - 1);
+    return value.toISOString().slice(0, 10);
+  };
   for (let y = Math.min(...years) - 1; y <= Math.max(...years); y++) {
     for (const item of [
-      { id: `summer-${y}`, label: `Sommersemester ${y}`, from: `${y}-04-01`, to: `${y}-09-30` },
-      { id: `winter-${y}`, label: `Wintersemester ${y}/${String(y + 1).slice(-2)}`, from: `${y}-10-01`, to: `${y + 1}-03-31` }
+      { id: `summer-${y}`, label: `Sommersemester ${y}`, from: monday(y, 4), to: previousDay(monday(y, 10)) },
+      { id: `winter-${y}`, label: `Wintersemester ${y}/${String(y + 1).slice(-2)}`, from: monday(y, 10), to: previousDay(monday(y + 1, 4)) }
     ]) if (events.some(e => e.date >= item.from && e.date <= item.to)) result.push(item);
   }
   return result;

@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
-import { attendance, parseCalendar, buildBuckets, semesterOptions, classify, subjectPartition, configurePartition, splitSubjects } from '../public/core.js';
+import { attendance, parseCalendar, buildBuckets, semesterOptions, classify, subjectPartition, configurePartition, splitSubjects, editableSubjects, combineSubjects, partitionPart, setPartitionDefault } from '../public/core.js';
 const calendar = events => `BEGIN:VCALENDAR\r\nVERSION:2.0\r\nPRODID:-//Campus Core Tests//DE\r\n${events}\r\nEND:VCALENDAR`;
 const event = (uid, extra = '', date = '20261005T090000', summary = 'VS Fachenglisch und Kommunikation') => `BEGIN:VEVENT\r\nUID:${uid}\r\nDTSTART:${date}\r\nDTEND:${date.slice(0, 9)}103000\r\nSUMMARY:${summary}\r\n${extra}\r\nEND:VEVENT`;
 
@@ -74,7 +74,23 @@ test('Semestergrenzen sind inklusive und Prüfungen optional', () => {
   assert.equal(buildBuckets(events, {}, { from: '2026-10-01', to: '2026-10-01' })[0].total, 1);
   assert.equal(buildBuckets(events).length, 1);
   assert.equal(buildBuckets(events, {}, { includeExams: true }).length, 2);
-  assert.equal(semesterOptions(events).length, 2);
+  assert.equal(semesterOptions(events).length, 1);
+});
+test('Semester starten montags, enden sonntags und grenzen lückenlos aneinander', () => {
+  const dates = [];
+  for (let year = 2024; year <= 2032; year++) for (let month = 1; month <= 12; month++) dates.push({ date: `${year}-${String(month).padStart(2, '0')}-01` });
+  const options = semesterOptions(dates);
+  const winter = options.find(p => p.id === 'winter-2026');
+  assert.equal(winter.from, '2026-09-28');
+  assert.equal(winter.to, '2027-03-28');
+  assert.equal(options.find(p => p.id === 'summer-2027').from, '2027-03-29');
+  for (const [index, item] of options.entries()) {
+    assert.equal(new Date(`${item.from}T12:00:00Z`).getUTCDay(), 1);
+    assert.equal(new Date(`${item.to}T12:00:00Z`).getUTCDay(), 0);
+    if (index) assert.equal((Date.parse(item.from) - Date.parse(options[index - 1].to)) / 86400000, 1);
+  }
+  for (const event of dates) assert.equal(options.filter(p => event.date >= p.from && event.date <= p.to).length, 1);
+  assert.deepEqual(semesterOptions([{ date: '2026-09-28' }]).map(p => p.id), ['winter-2026']);
 });
 test('Lehrformen bleiben standardmäßig getrennt', () => {
   assert.notEqual(classify('VS Analysis').defaultSubject, classify('LP Analysis').defaultSubject);
@@ -169,6 +185,75 @@ test('neue Importtermine bleiben offen und werden nicht automatisch verteilt', (
   assert.equal(subjectPartition([...events, added], config).unassigned, 1);
   const oneSide = { ...config, assignments: Object.fromEntries(events.map(e => [e.id, 'Englisch'])) };
   assert.equal(subjectPartition(events, oneSide).complete, false);
+});
+test('ein Standard ordnet offene und neue Termine zu, erhält aber Einzelzuordnungen', () => {
+  const { events } = parseCalendar(calendar(event('a', 'RRULE:FREQ=WEEKLY;COUNT=10')));
+  const source = events[0].source;
+  let config = configurePartition(events, {}, ['Englisch', 'Kommunikation']);
+  config.assignments[events[0].id] = 'Kommunikation';
+  config = setPartitionDefault(config, 'Englisch');
+  assert.equal(partitionPart(events[0], config), 'Kommunikation');
+  assert.equal(partitionPart(events[1], config), 'Englisch');
+  assert.equal(partitionPart({ id: 'new' }, config), 'Englisch');
+  assert.equal(subjectPartition(events, config).complete, true);
+  const split = buildBuckets(events, { [source]: config }, { mode: 'split', absences: { [events[1].id]: true } });
+  assert.equal(split.find(b => b.part === 'Englisch').total, 9);
+  assert.equal(split.find(b => b.part === 'Englisch').absent, 1);
+  const renamed = configurePartition(events, config, ['English', 'Communication']);
+  assert.equal(renamed.defaultPart, 'English');
+  assert.equal(partitionPart(events[0], renamed), 'Communication');
+  config.assignments[events[1].id] = '';
+  assert.equal(subjectPartition(events, config).unassigned, 1);
+  assert.equal(configurePartition(events, config, config.parts).assignments[events[1].id], '');
+  assert.equal(subjectPartition(events, setPartitionDefault(config, '')).assigned, 1);
+  assert.throws(() => setPartitionDefault(config, 'Unbekannt'), /vorhandenes/);
+});
+test('manuelles Zusammenfügen erhält Termine, Abwesenheiten und getrennte Originalkonfigurationen', () => {
+  const { events } = parseCalendar(calendar([
+    event('lecture', 'RRULE:FREQ=WEEKLY;COUNT=5', '20261005T090000', 'VS Digitaltechnik und Rechnerarchitektur'),
+    event('lab', 'RRULE:FREQ=WEEKLY;COUNT=5', '20261006T090000', 'LP Digitaltechnik und Rechnerarchitektur'),
+    event('exam', '', '20261201T090000', 'P Digitaltechnik (K)')
+  ].join('\r\n')));
+  const choices = editableSubjects(events);
+  assert.equal(choices.length, 2);
+  const settings = { [choices[0].source]: { parts: ['A', 'B'] } };
+  const before = JSON.stringify(settings);
+  const groups = combineSubjects(events, settings, [], choices.map(s => s.source), ' Digitaltechnik ', 'group:test');
+  const absences = Object.fromEntries(events.slice(0, 3).map(e => [e.id, true]));
+  for (const mode of ['joined', 'split']) {
+    const result = buildBuckets(events, settings, { groups, mode, absences });
+    assert.equal(result.length, 1);
+    assert.equal(result[0].subject, 'Digitaltechnik');
+    assert.equal(result[0].total, 10);
+    assert.equal(result[0].required, 7);
+    assert.equal(result[0].absent, 3);
+    assert.equal(result[0].remaining, 0);
+  }
+  assert.equal(editableSubjects(events, settings, groups).length, 1);
+  assert.equal(editableSubjects(events, settings, groups)[0].sources.length, 2);
+  assert.equal(buildBuckets(events, settings, { groups, includeExams: true }).length, 2);
+  assert.equal(buildBuckets(events, settings, { groups, from: '2026-10-05', to: '2026-10-06' })[0].total, 2);
+  assert.equal(buildBuckets(events, settings, { groups: [] }).length, 2);
+  assert.equal(JSON.stringify(settings), before);
+  assert.throws(() => combineSubjects(events, {}, [], [choices[0].source], 'Test', 'group:x'), /mindestens zwei/);
+  assert.throws(() => combineSubjects(events, {}, [], choices.map(s => s.source), ' ', 'group:x'), /Fachnamen/);
+  assert.throws(() => combineSubjects(events, {}, [], [choices[0].source, events.at(-1).source], 'Test', 'group:x'), /mindestens zwei/);
+});
+test('zusammengefügte Fächer lassen sich als Ganzes in zwei Unterfächer teilen', () => {
+  const { events } = parseCalendar(calendar(event('a', 'RRULE:FREQ=WEEKLY;COUNT=4', '20261005T090000', 'VS Digitaltechnik') + '\r\n' + event('b', 'RRULE:FREQ=WEEKLY;COUNT=4', '20261006T090000', 'LP Digitaltechnik')));
+  const choices = editableSubjects(events);
+  const groups = combineSubjects(events, {}, [], choices.map(s => s.source), 'Digitaltechnik', 'group:one');
+  const config = setPartitionDefault(configurePartition(events, {}, ['Theorie', 'Praxis']), 'Theorie');
+  for (const item of events.filter(e => e.kind === 'Labor')) config.assignments[item.id] = 'Praxis';
+  assert.equal(buildBuckets(events, { 'group:one': config }, { groups }).length, 1);
+  const split = buildBuckets(events, { 'group:one': config }, { groups, mode: 'split' });
+  assert.equal(split.length, 2);
+  assert.deepEqual(split.map(b => b.total), [4, 4]);
+  const extra = { ...events[0], id: 'third', source: 'VS Drittes Fach', defaultSubject: 'Drittes Fach' };
+  const expanded = combineSubjects([...events, extra], {}, groups, ['group:one', extra.source], 'Alles', 'group:two');
+  assert.equal(expanded.length, 1);
+  assert.equal(expanded[0].sources.length, 3);
+  assert.equal(buildBuckets([...events, extra], {}, { groups: expanded })[0].total, 9);
 });
 test('Fehltermine außerhalb des Zeitraums werden nicht abgezogen', () => {
   const { events } = parseCalendar(calendar(event('a', 'RRULE:FREQ=WEEKLY;COUNT=10')));

@@ -1,4 +1,4 @@
-import { buildBuckets, semesterOptions, subjectPartition, configurePartition, splitSubjects, STORAGE_KEY } from './core.js';
+import { buildBuckets, semesterOptions, subjectPartition, configurePartition, editableSubjects, combineSubjects, partitionPart, setPartitionDefault, STORAGE_KEY } from './core.js';
 import { demoCalendar } from './demo.js';
 import { mountSubjectPicker } from './subject-picker.js';
 
@@ -30,7 +30,7 @@ const icon = name => `<svg viewBox="0 0 24 24" aria-hidden="true">${paths[name] 
 function icons(root = document) { root.querySelectorAll('[data-icon]').forEach(el => { el.innerHTML = icon(el.dataset.icon); }); }
 icons();
 
-const freshState = () => ({ version: 1, events: [], settings: {}, absences: {}, excluded: {}, filename: '', demo: false, mode: 'joined', from: '', to: '', period: 'all', includeExams: false, preferences: { attendanceRate: 0.7 } });
+const freshState = () => ({ version: 1, events: [], settings: {}, groups: [], absences: {}, excluded: {}, filename: '', demo: false, mode: 'joined', from: '', to: '', period: 'all', includeExams: false, preferences: { attendanceRate: 0.7 } });
 let state = freshState(), storageAvailable = true, buckets = [], activeBucketKey = '', manageSource = '', importing = false;
 try {
   const saved = JSON.parse(localStorage.getItem(STORAGE_KEY) || 'null');
@@ -38,6 +38,8 @@ try {
 } catch { storageAvailable = false; }
 
 if (!Number.isFinite(state.preferences?.attendanceRate) || state.preferences.attendanceRate < 0 || state.preferences.attendanceRate > 1) state.preferences = { attendanceRate: 0.7 };
+if (!Array.isArray(state.groups)) state.groups = [];
+const subjectChoices = () => editableSubjects(state.events, state.settings, state.groups);
 
 function message(text, error = false) { $('message').textContent = text; $('message').classList.toggle('error', error); $('message').hidden = !text; }
 function save() {
@@ -68,7 +70,8 @@ function uploadStatus() {
   $('dropzone').hidden = loaded;
   $('upload-description').textContent = loaded ? `${state.filename} · ${state.events.length} Termine${state.demo ? ' (Beispiel)' : ''}` : 'Kein Kalender geladen';
   $('upload-label').textContent = loaded ? 'Datei wechseln' : 'Datei auswählen';
-  $('manage-button').disabled = !splitSubjects(state.events).length;
+  $('manage-button').disabled = !subjectChoices().length;
+  $('merge-button').disabled = subjectChoices().length < 2 && !state.groups.length;
   $('reset-button').hidden = !loaded;
 }
 function render() {
@@ -230,20 +233,23 @@ $('events-body').addEventListener('change', event => {
   $('events-body').querySelector(`[data-absence="${focusedIndex}"]`)?.focus({ preventScroll: true });
 });
 
-function sourceEvents() { return state.events.filter(e => e.source === manageSource); }
+function sourceEvents() {
+  const sources = subjectChoices().find(s => s.source === manageSource)?.sources || [];
+  return state.events.filter(e => sources.includes(e.source));
+}
 function configFor() { return Object.hasOwn(state.settings, manageSource) ? state.settings[manageSource] : { parts: [], assignments: {} }; }
 function storeConfig(config) {
   Object.defineProperty(state.settings, manageSource, { value: config, writable: true, enumerable: true, configurable: true });
 }
 function manageOpen() {
-  const subjects = splitSubjects(state.events);
+  const subjects = subjectChoices();
   if (!subjects.length) return;
   if (!subjects.some(subject => subject.source === manageSource)) manageSource = subjects[0].source;
   renderManage(); $('manage-dialog').showModal();
 }
 $('manage-button').addEventListener('click', manageOpen);
 function renderManage(nameDraft = null, restorePickerFocus = false) {
-  const subjects = splitSubjects(state.events);
+  const subjects = subjectChoices();
   const config = configFor();
   const events = sourceEvents();
   const partition = subjectPartition(events, config);
@@ -255,7 +261,7 @@ function renderManage(nameDraft = null, restorePickerFocus = false) {
       <div class="split-names"><label class="field-label">Unterfach 1<input id="split-name-1" value="${escape(names[0])}" placeholder="z. B. Englisch" maxlength="80" required></label><label class="field-label">Unterfach 2<input id="split-name-2" value="${escape(names[1])}" placeholder="z. B. Kommunikation" maxlength="80" required></label></div>
       <div class="split-actions"><button type="submit" class="button primary">Unterfächer speichern</button>${partition.enabled ? '<button type="button" id="split-disable" class="text-button">Aufteilung aufheben</button>' : ''}</div>
     </form>
-    ${partition.enabled ? `<section class="split-assignment" aria-labelledby="split-assignment-title"><h3 id="split-assignment-title">Termine zuordnen</h3><p class="split-status" id="split-status" role="status"></p><p class="split-counts" id="split-counts"></p><div class="event-list split-events">${events.map((e, i) => `<div class="event-row">${eventInfo(e)}<select data-split-part="${i}" aria-label="Unterfach am ${escape(formatDay(e.date))}, ${escape(e.time)}"><option value="">Nicht zugeordnet</option>${partition.parts.map(part => `<option value="${escape(part)}" ${config.assignments?.[e.id] === part ? 'selected' : ''}>${escape(part)}</option>`).join('')}</select></div>`).join('')}</div></section>` : ''}
+    ${partition.enabled ? `<section class="split-assignment" aria-labelledby="split-assignment-title"><h3 id="split-assignment-title">Termine zuordnen</h3><p class="split-status" id="split-status" role="status"></p><div class="field-label split-default"><label for="split-default">Standard-Unterfach</label><select id="split-default" aria-describedby="split-default-note"><option value="">Kein Standard</option>${partition.parts.map(part => `<option value="${escape(part)}" ${config.defaultPart === part ? 'selected' : ''}>${escape(part)}</option>`).join('')}</select></div><p class="split-counts" id="split-counts"></p><div class="event-list split-events">${events.map((e, i) => `<div class="event-row">${eventInfo(e)}<select data-split-part="${i}" aria-label="Unterfach am ${escape(formatDay(e.date))}, ${escape(e.time)}"><option value="">Nicht zugeordnet</option>${partition.parts.map(part => `<option value="${escape(part)}" ${partitionPart(e, config) === part ? 'selected' : ''}>${escape(part)}</option>`).join('')}</select></div>`).join('')}</div></section>` : ''}
   </div>`;
   const picker = mountSubjectPicker($('subject-picker'), {
     subjects, selected: manageSource,
@@ -278,11 +284,18 @@ function renderManage(nameDraft = null, restorePickerFocus = false) {
   $('split-disable')?.addEventListener('click', () => {
     storeConfig({ ...configFor(), splitEnabled: false }); save(); render(); renderManage();
   });
+  $('split-default')?.addEventListener('change', () => {
+    const scrollTop = $('manage-dialog').scrollTop;
+    storeConfig(setPartitionDefault(configFor(), $('split-default').value));
+    save(); render(); renderManage([$('split-name-1').value, $('split-name-2').value]);
+    $('split-default').focus({ preventScroll: true });
+    $('manage-dialog').scrollTop = scrollTop;
+  });
   $('manage-body').querySelectorAll('[data-split-part]').forEach(select => select.addEventListener('change', () => {
     const current = configFor();
     const assignments = { ...current.assignments };
     const id = events[Number(select.dataset.splitPart)].id;
-    if (select.value) assignments[id] = select.value; else delete assignments[id];
+    assignments[id] = select.value;
     storeConfig({ ...current, assignments }); save(); render(); updateSplitStatus();
   }));
   updateSplitStatus();
@@ -294,13 +307,55 @@ function updateSplitStatus() {
   const partition = subjectPartition(events, config);
   if (!$('split-status')) return;
   $('split-status').textContent = partition.complete ? 'Alle Termine sind zugeordnet. Mit „Pro Unterfach“ kannst du die beiden Fehlbudgets getrennt berechnen.' : partition.unassigned ? `Noch ${partition.unassigned} von ${partition.total} Terminen zuordnen. Bis dahin wird dieses Fach gemeinsam berechnet.` : `Noch keine Termine für ${partition.emptyParts.join(', ')}. Ordne beiden Unterfächern Termine zu, um getrennt zu rechnen.`;
-  $('split-counts').textContent = partition.parts.map(part => `${part}: ${events.filter(e => config.assignments?.[e.id] === part).length} Termine`).join(' · ');
+  $('split-counts').textContent = partition.parts.map(part => `${part}: ${events.filter(e => partitionPart(e, config) === part).length} Termine`).join(' · ');
 }
+
+function renderMerge() {
+  const subjects = subjectChoices();
+  $('merge-body').innerHTML = `<div class="manage-form"><p class="manage-info">Wähle die Fächer, die gemeinsam berechnet werden sollen. Die Termine und Fehlmarkierungen bleiben erhalten.</p><form id="merge-form"><label class="field-label">Gemeinsamer Fachname<input id="merge-name" maxlength="120" required placeholder="z. B. Digitaltechnik und Rechnerarchitektur"></label><label class="search-field merge-search"><span>${icon('search')}</span><input id="merge-search" type="search" placeholder="Fächer suchen" aria-label="Fächer zum Zusammenfügen suchen"></label><fieldset class="merge-choices"><legend class="sr-only">Fächer auswählen</legend>${subjects.map((s, i) => `<label class="merge-choice" data-merge-row="${i}"><input type="checkbox" name="merge-subject" value="${escape(s.source)}"><span>${escape(s.title)}${s.grouped ? '<small>Zusammengefügt</small>' : ''}</span></label>`).join('')}</fieldset><p id="merge-empty" class="split-counts" hidden>Keine Fächer gefunden.</p><div class="merge-submit"><span id="merge-count" role="status">0 Fächer ausgewählt</span><button class="button primary" id="merge-save" type="submit" disabled>Zusammenfügen</button></div><p id="merge-error" class="message error" role="alert" hidden></p></form>${state.groups.length ? `<section class="split-assignment"><h3>Zusammengefügte Fächer</h3>${state.groups.map((group, i) => `<div class="merge-saved"><span>${escape(group.name)}<small>${group.sources.length} Kalenderfächer</small></span><button type="button" class="text-button" data-unmerge="${i}" aria-label="Verbindung für ${escape(group.name)} aufheben">Aufheben</button></div>`).join('')}</section>` : ''}</div>`;
+  $('merge-search').addEventListener('input', () => {
+    const query = $('merge-search').value.trim().toLocaleLowerCase('de');
+    let visible = 0;
+    $('merge-body').querySelectorAll('[data-merge-row]').forEach(row => {
+      row.hidden = !subjects[Number(row.dataset.mergeRow)].title.toLocaleLowerCase('de').includes(query);
+      if (!row.hidden) visible++;
+    });
+    $('merge-empty').hidden = visible > 0;
+  });
+  $('merge-form').addEventListener('change', () => {
+    const count = $('merge-form').querySelectorAll('[name="merge-subject"]:checked').length;
+    $('merge-count').textContent = `${count} Fächer ausgewählt`;
+    $('merge-save').disabled = count < 2;
+  });
+  $('merge-form').addEventListener('submit', event => {
+    event.preventDefault();
+    try {
+      const selected = [...$('merge-form').querySelectorAll('[name="merge-subject"]:checked')].map(el => el.value);
+      const id = `group:${globalThis.crypto?.randomUUID?.() || `${Date.now()}-${Math.random().toString(36).slice(2)}`}`;
+      state.groups = combineSubjects(state.events, state.settings, state.groups, selected, $('merge-name').value, id);
+      save(); render(); renderMerge();
+      $('merge-notice').textContent = 'Fächer zusammengefügt.';
+    } catch (error) { $('merge-error').textContent = error.message; $('merge-error').hidden = false; }
+  });
+  $('merge-body').querySelectorAll('[data-unmerge]').forEach(button => button.addEventListener('click', () => {
+    state.groups.splice(Number(button.dataset.unmerge), 1);
+    save(); render(); renderMerge();
+    $('merge-notice').textContent = 'Verbindung aufgehoben. Die ursprünglichen Fächer werden wieder einzeln berechnet.';
+  }));
+}
+$('merge-button').addEventListener('click', () => {
+  $('merge-notice').textContent = 'Änderungen werden lokal gespeichert.';
+  renderMerge(); $('merge-dialog').showModal();
+});
 $('reset-button').addEventListener('click', () => {
   if (!window.confirm('Kalender, Fachzuordnungen und markierte Fehltermine aus diesem Browser löschen?')) return;
   state = freshState(); manageSource = ''; $('search').value = '';
   try { localStorage.removeItem(STORAGE_KEY); } catch { /* session state is still cleared */ }
   message('Deine lokalen Daten wurden gelöscht.'); periodControls(); render();
 });
+const savedSemester = semesterOptions(state.events).find(p => p.id === state.period);
+if (savedSemester && (state.from !== savedSemester.from || state.to !== savedSemester.to)) {
+  state.from = savedSemester.from; state.to = savedSemester.to; save();
+}
 periodControls(); render();
 if (!storageAvailable) message('Der lokale Speicher ist nicht verfügbar. Die App funktioniert für diese Sitzung; Änderungen bleiben beim Neuladen möglicherweise nicht erhalten.', true);

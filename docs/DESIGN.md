@@ -44,7 +44,7 @@ Pflicht = ceil(Termine × gespeicherte Quote), Standard 0,7. Übrig = Termine �
 
 Diese Regeln betreffen ausschließlich die Anwesenheitsseite.
 
-„Fach aufteilen“ enthält ausschließlich eine Fachauswahl, zwei Namensfelder und nach dem Speichern die manuelle Terminzuordnung zu diesen beiden Unterfächern. Keine gemeinsamen Fachnamen, keine kommaseparierte Veranstaltungsliste und keine automatische Interpretation von ICS-Titeln. Unvollständige Aufteilungen werden als Gesamtfach berechnet und entsprechend gekennzeichnet. Neue Termine bleiben unzugeordnet. Aufheben deaktiviert die Trennung, ohne den Entwurf zu löschen.
+„Fach aufteilen“ enthält ausschließlich eine Fachauswahl, zwei Namensfelder und nach dem Speichern die manuelle Terminzuordnung zu diesen beiden Unterfächern. Keine gemeinsamen Fachnamen, keine kommaseparierte Veranstaltungsliste und keine automatische Interpretation von ICS-Titeln. Unvollständige Aufteilungen werden als Gesamtfach berechnet und entsprechend gekennzeichnet. Ein optionaler Standard ordnet offene und neue Termine zu; explizite Einzelzuordnungen haben Vorrang. Ohne Standard bleiben neue Termine unzugeordnet. Aufheben deaktiviert die Trennung, ohne den Entwurf zu löschen.
 
 ## Mensaplan
 
@@ -61,3 +61,11 @@ Gerichte: Padding 14/16/4 px und obere Linie. Kategorie 12 px mit 8-px-Punkt (Fl
 Unter 800 px sind die Einstellungen anfangs eingeklappt; der Mensaname ist im kompakten Kopf lesbar. Karten brechen anhand ihrer Mindestbreite um. Wochenende separat ausklappbar. Der Dunkelmodus tauscht die Tokens; Selects und Inputs übernehmen das gemeinsame Farbschema.
 
 Die Fachauswahl zur Aufteilung ist eine kompakte, durchsuchbare Combobox. Prüfungen sind ausgeschlossen; die Suche sitzt im selben Feld. Vorschläge sind per Tastatur und Touch auswählbar. Die Namensfelder werden beim Fachwechsel als ungespeicherter Entwurf übernommen. Der Hinweis „Ohne Aufteilung wird das Fach als Ganzes berechnet.“ entfällt.
+
+## Semester und manuelle Verbindungen
+
+Semester beginnen am Montag der Woche des 1. April bzw. 1. Oktober und enden am Sonntag vor dem Folgesemester. Eigene Zeiträume werden nicht angepasst. Gespeicherte Semester-Vorschläge übernehmen die neuen Grenzen.
+
+Neben „Fach aufteilen“ steht „Fächer zusammenfügen“. Die gemeinsame Fachbezeichnung und mindestens zwei explizit ausgewählte Kalenderfächer ergeben ein gemeinsames Budget. Suche und Mehrfachauswahl im Dialog; bestehende Verbindungen sind dort aufhebbar. Ursprüngliche Termine, Fehlmarkierungen und Aufteilungsentwürfe bleiben erhalten. Keine automatische Zusammenführung von Labor oder ähnlich benannten Fächern. Auch zusammengefügte Fächer können manuell aufgeteilt werden.
+
+Berechnungswahl und beide Fachaktionen besitzen dieselbe äußere Höhe (52 px), Textausrichtung und jeweils 10 px vertikales CSS-Padding. Mobil umbrechen die Aktionen.

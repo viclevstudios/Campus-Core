@@ -52,6 +52,7 @@
         <label id="search-field" class="search-field" hidden><span data-icon="search"></span><input id="search" type="search" placeholder="Fach suchen" aria-label="Fach suchen"></label>
         <div class="segmented" role="group" aria-label="Berechnungsweise"><button id="mode-joined" class="selected" aria-pressed="true">Pro Fach</button><button id="mode-split" aria-pressed="false">Pro Unterfach</button></div>
         <button class="button secondary" id="manage-button">Fach aufteilen</button>
+        <button class="button secondary" id="merge-button">Fächer zusammenfügen</button>
       </div></div>
       <div class="table-scroll" id="table-scroll" role="region" aria-label="Fehlbudgets je Fach, auf kleinen Bildschirmen horizontal scrollbar" tabindex="0" hidden>
         <table class="course-table" role="table" aria-label="Fehlbudgets"><thead role="rowgroup"><tr role="row"><th scope="col" role="columnheader"><span class="sr-only">Einbeziehen</span></th><th scope="col" role="columnheader" id="subject-column">Fach</th><th scope="col" role="columnheader"><span class="legend"><span><i class="legend-required" aria-hidden="true"></i>Pflicht</span><span><i class="legend-free" aria-hidden="true"></i>Frei</span><span><i class="legend-planned" aria-hidden="true"></i>Gefehlt</span></span></th><th scope="col" role="columnheader" class="numeric">Übrig</th><th scope="col" role="columnheader" class="numeric">Gefehlt</th><th scope="col" role="columnheader"><span class="sr-only">Termine</span></th></tr></thead><tbody id="course-grid" role="rowgroup"></tbody></table>
@@ -59,7 +60,7 @@
       <p class="scroll-hint" id="scroll-hint" hidden>Weitere Spalten durch seitliches Wischen anzeigen.</p>
       <div id="empty-state" class="empty-state"><p>Kein Stundenplan geladen.</p></div>
     </section>
-    <div class="bottom-note"><p>Campus Core übernimmt keine Garantie der Richtigkeit der Berechnungen.</p><button id="reset-button" class="text-button" hidden>Lokale Daten löschen</button></div>
+    <div class="bottom-note"><p>Campus Core übernimmt keine Garantie für die Richtigkeit der Berechnungen.</p><button id="reset-button" class="text-button" hidden>Lokale Daten löschen</button></div>
     </div>
     <section id="mensa" aria-labelledby="mensa-title" hidden>
       <header class="page-heading mensa-page-heading"><h1 id="mensa-title">Mensaplan</h1><div class="mensa-refresh-group"><span id="mensa-updated">Stand –</span><button id="mensa-refresh" class="icon-button" aria-label="Plan aktualisieren"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 7v5h-5M4 17v-5h5"/><path d="M6.1 7a7 7 0 0 1 11.6-1L20 9M4 15l2.3 3A7 7 0 0 0 17.9 17"/></svg></button></div></header>
@@ -95,6 +96,7 @@
     <p class="popover-note">Die Quote wird lokal gespeichert. Abweichende Hochschulregeln, z. B. eine Berechnung nach Stunden, bitte gesondert prüfen.</p>
   </div>
   <dialog id="manage-dialog" class="wide-dialog" aria-labelledby="manage-title"><div class="dialog-head"><h2 id="manage-title">Fach aufteilen</h2><button class="icon-button close-dialog" aria-label="Schließen"><span data-icon="close"></span></button></div><div id="manage-body"></div><div class="dialog-footer"><span>Änderungen werden lokal gespeichert.</span><button class="button primary close-dialog">Fertig</button></div></dialog>
+  <dialog id="merge-dialog" aria-labelledby="merge-title"><div class="dialog-head"><h2 id="merge-title">Fächer zusammenfügen</h2><button class="icon-button close-dialog" aria-label="Schließen"><span data-icon="close"></span></button></div><div id="merge-body"></div><div class="dialog-footer"><span id="merge-notice" role="status">Änderungen werden lokal gespeichert.</span><button class="button primary close-dialog">Fertig</button></div></dialog>
   <dialog id="events-dialog" class="wide-dialog" aria-labelledby="events-title"><div class="dialog-head"><h2 id="events-title"></h2><button class="icon-button close-dialog" aria-label="Schließen"><span data-icon="close"></span></button></div><p class="dialog-intro">Markiere Termine, an denen du fehlst oder fehlen möchtest. Die Prognose nimmt an, dass du alle übrigen Termine besuchst.</p><div id="events-body"></div><div class="dialog-footer"><span id="events-summary"></span><button class="button primary close-dialog">Fertig</button></div></dialog>
 </body>
 </html>

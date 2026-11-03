@@ -57,6 +57,7 @@ export function availablePriceGroups(days) {
 }
 export function categoryTone(category) {
   if (/^Fleischgericht$/i.test(category.trim())) return 'meat';
+  if (/^Pastateller$/i.test(category.trim())) return 'pasta';
   if (/^(Vegetarisches|Veganes) Gericht$/i.test(category.trim())) return 'veg';
   return 'other';
 }
