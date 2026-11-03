@@ -1,0 +1,89 @@
+/* Mensaplan: supplied light/dark reference, shared Campus Core tokens. */
+.mensa-page-heading { margin-bottom: 24px; }
+.mensa-refresh-group { display: flex; align-items: center; gap: 12px; color: var(--muted); }
+#mensa-updated { white-space: nowrap; }
+.mensa-settings-panel { margin-bottom: 24px; }
+.mensa-settings-panel>summary { display: none; }
+.mensa-settings { display: flex; flex-wrap: wrap; align-items: stretch; gap: 12px; }
+.mensa-picker { flex: 1 1 420px; position: relative; min-width: 0; }
+.mensa-choose { display: flex; align-items: center; justify-content: space-between; gap: 16px; width: 100%; min-height: 64px; padding: 12px 16px; border: 1px solid var(--border); border-radius: 10px; background: var(--surface); text-align: left; }
+.mensa-choose:hover, .mensa-choose[aria-expanded='true'] { border-color: var(--accent); }
+.mensa-chosen { display: block; min-width: 0; overflow-wrap: anywhere; }
+#mensa-name { display: block; font-size: 16px; font-weight: 600; line-height: 22px; }
+#mensa-address { display: block; font-size: 13px; line-height: 18px; color: var(--muted); }
+.mensa-change { display: flex; align-items: center; gap: 8px; flex-shrink: 0; color: var(--accent-text); }
+.mensa-change svg { width: 16px; height: 16px; }
+.mensa-price-field { display: flex; align-items: center; gap: 12px; color: var(--muted); }
+.mensa-price-field select { height: 64px; min-width: 126px; border-radius: 10px; background: var(--surface); color: var(--text); color-scheme: var(--scheme); }
+.mensa-dropdown { position: absolute; top: calc(100% + 8px); inset-inline: 0; z-index: 10; border: 1px solid var(--border); border-radius: 10px; background: var(--surface); overflow: hidden; }
+.mensa-search-wrap { padding: 12px; border-bottom: 1px solid var(--border); }
+.mensa-search-wrap input { width: 100%; color-scheme: var(--scheme); }
+.mensa-options { max-height: 320px; overflow-y: auto; overscroll-behavior: contain; scrollbar-color: var(--muted) var(--surface); }
+.mensa-options [role='option'] { display: block; width: 100%; min-height: 64px; padding: 12px 16px; text-align: left; border-bottom: 1px solid var(--border); overflow-wrap: anywhere; }
+.mensa-options [role='option']>span { display: block; font-weight: 500; }
+.mensa-options small { display: block; color: var(--muted); font-size: 13px; margin-top: 2px; }
+.mensa-options [role='option']:hover, .mensa-options [role='option']:focus-visible, .mensa-options [aria-selected='true'] { background: var(--accent-soft); color: var(--accent-text); }
+.mensa-options [role='option']:hover small, .mensa-options [role='option']:focus-visible small, .mensa-options [aria-selected='true'] small { color: var(--accent-text); }
+.mensa-options [role='option']:focus-visible { outline-offset: -3px; }
+.mensa-dropdown>.text-button { padding-inline: 16px; }
+.mensa-search-message { color: var(--muted); margin: 16px; font-size: 13px; }
+.mensa-week-bar { display: flex; align-items: center; flex-wrap: wrap; gap: 12px; border-top: 1px solid var(--border); padding: 20px 0 24px; }
+.mensa-week-actions { display: flex; gap: 12px; margin-right: 6px; }
+#mensa-week-label { font-size: 20px; font-weight: 600; line-height: 1.4; font-variant-numeric: tabular-nums; margin: 0; }
+.mensa-week-pill { border-radius: 999px; padding: 4px 10px; font-size: 13px; font-weight: 500; background: var(--accent-soft); color: var(--accent-text); }
+#mensa-current { min-height: 44px; font-size: 13px; }
+.mensa-status { font-size: 13px; color: var(--muted); margin: 0 0 16px; }
+.mensa-status.error { color: var(--bad); }
+.mensa-weekdays, .mensa-weekend-days { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 12px; align-items: start; }
+.mensa-day { min-width: 0; background: var(--surface); border: 1px solid var(--border); border-radius: 12px; overflow: hidden; }
+.mensa-day h3 { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 12px 16px; margin: 0; font-size: 14px; font-weight: 600; }
+.mensa-day time { font-size: 13px; font-weight: 400; font-variant-numeric: tabular-nums; flex-shrink: 0; }
+.mensa-today { border-color: var(--accent); }
+.mensa-today h3 { color: var(--accent-text); background: var(--accent-soft); }
+.mensa-day-message { margin: 0; padding: 14px 16px 18px; color: var(--muted); font-size: 13px; border-top: 1px solid var(--border); }
+.mensa-day-error { color: var(--bad); }
+.mensa-meals { list-style: none; margin: 0; padding: 0; }
+.mensa-meal { padding: 14px 16px 4px; border-top: 1px solid var(--border); }
+.mensa-meal-meta { display: flex; align-items: flex-start; justify-content: space-between; gap: 8px; }
+.mensa-category { display: inline-flex; align-items: center; gap: 6px; min-width: 0; color: var(--muted); font-size: 12px; line-height: 18px; }
+.mensa-category-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; background: var(--muted); }
+.mensa-category-dot.meat { background: var(--meat); }
+.mensa-category-dot.veg { background: var(--veg); }
+.mensa-meal-price { font-size: 14px; font-weight: 600; white-space: nowrap; font-variant-numeric: tabular-nums; }
+.mensa-price-missing { color: var(--muted); font-size: 12px; font-weight: 400; white-space: normal; max-width: 85px; text-align: right; }
+.mensa-meal h4 { font-size: 14px; font-weight: 500; line-height: 1.5; margin: 6px 0 0; overflow-wrap: anywhere; hyphens: auto; }
+.mensa-allergen-toggle { display: inline-flex; align-items: center; gap: 6px; min-height: 44px; padding: 0; margin-top: 4px; font-size: 13px; color: var(--muted); text-align: left; }
+.mensa-allergen-toggle:hover { color: var(--accent-text); }
+.mensa-allergen-toggle svg { width: 14px; height: 14px; transition: transform 150ms ease-out; }
+.mensa-allergen-toggle[aria-expanded='true'] svg { transform: rotate(180deg); }
+.mensa-notes { font-size: 13px; color: var(--muted); overflow-wrap: anywhere; }
+.mensa-notes ul { margin: 0 0 12px; padding-left: 16px; }
+.mensa-notes li + li { margin-top: 4px; }
+.mensa-notes p { margin: 0 0 12px; }
+.mensa-weekend { margin-top: 12px; }
+.mensa-weekend>summary { min-height: 44px; padding-block: 12px; color: var(--accent-text); font-size: 13px; cursor: pointer; }
+.mensa-weekend>summary:focus-visible, .mensa-settings-panel>summary:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
+.mensa-footer { margin-top: 16px; font-size: 12px; color: var(--muted); }
+.mensa-footer p { margin: 0; }
+.mensa-footer a { color: var(--accent-text); text-decoration: underline; text-underline-offset: 3px; }
+@media (max-width: 799px) {
+  .mensa-settings-panel { margin-bottom: 20px; }
+  .mensa-settings-panel>summary { display: list-item; min-height: 44px; padding: 12px 0; color: var(--accent-text); font-size: 14px; font-weight: 500; cursor: pointer; }
+  #mensa-mobile-selection { display: block; color: var(--muted); font-size: 13px; font-weight: 400; margin-top: 4px; }
+  .mensa-settings-panel[open] .mensa-settings { padding-top: 8px; }
+  .mensa-settings { flex-direction: column; }
+  .mensa-picker { flex: 0 1 auto; }
+  .mensa-price-field { justify-content: space-between; }
+  .mensa-price-field select { flex: 1; max-width: 240px; }
+  .mensa-week-bar { gap: 12px; }
+  .mensa-week-actions { margin-right: 0; }
+  #mensa-week-label { flex-basis: calc(100% - 112px); font-size: 18px; }
+}
+@media (max-width: 440px) {
+  .mensa-page-heading { gap: 12px; align-items: center; }
+  .mensa-refresh-group { gap: 8px; font-size: 12px; }
+  .mensa-choose { gap: 10px; padding-inline: 12px; }
+  .mensa-change { gap: 2px; font-size: 13px; }
+  .mensa-options { max-height: 260px; }
+}
+@media (prefers-reduced-motion: reduce) { .mensa-allergen-toggle svg { transition: none; } }
