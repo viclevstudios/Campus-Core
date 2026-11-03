@@ -23,6 +23,22 @@ npm.cmd run build
 
 Den **Inhalt von `dist/`** auf einen beliebigen statischen HTTP-/HTTPS-Webserver kopieren. Es ist keine Node-Laufzeit auf dem Hosting nötig. Ein Unterverzeichnis funktioniert ebenfalls; alle Asset-Pfade sind relativ. JavaScript-Dateien als `text/javascript` ausliefern. Nicht per `file://` öffnen: ES-Module und der Kalender-Worker benötigen HTTP/HTTPS. Der Ordner enthält alle benötigten Assets einschließlich Kalenderbibliothek und Lizenz.
 
+## GitHub Pages mit eigener Subdomain
+
+Die Projektstruktur bleibt unverändert: Quelltexte unter `public/`, Build-Skripte unter `scripts/`. Der Workflow `.github/workflows/pages.yml` installiert die Abhängigkeiten, führt `npm run build` aus und veröffentlicht ausschließlich den Inhalt von `dist/` als Pages-Artefakt. `dist/` bleibt in `.gitignore` und muss nicht eingecheckt werden. Die Seite erscheint dadurch direkt unter der Domain, ohne `/public/` im Pfad.
+
+Einmalig im Repository einrichten:
+
+1. Unter **Settings → Pages → Build and deployment → Source** auf **GitHub Actions** umstellen.
+2. Unter **Custom domain** `campus-core.timglaetzer.de` eingetragen lassen und **Enforce HTTPS** aktivieren, sobald verfügbar. Bei einem eigenen Actions-Workflow ist die Domain-Einstellung maßgeblich; eine `CNAME`-Datei wird nicht benötigt.
+3. Den Workflow zusammen mit den Projektdateien auf `main` pushen. Falls der Workflow bereits vor der Umstellung lief, unter **Actions → Publish Campus Core → Run workflow** für `main` starten.
+
+Danach veröffentlicht jeder Push auf `main` die aktuelle Webseite automatisch. Keine Dateien aus `public/` ins Repository-Hauptverzeichnis verschieben. Ein persönlicher Zugriffstoken ist nicht nötig; der Workflow nutzt das von GitHub bereitgestellte Token mit Leserechten zum Bauen und Veröffentlichungsrechten ausschließlich im Deployment-Job.
+
+Namecheap-DNS: CNAME mit Host `campus-core` und Ziel `viclevstudios.github.io`. Bei einem anderen Repository-Inhaber oder einer anderen Domain die Werte entsprechend ersetzen. Kalenderdaten bleiben lokal im Browser.
+
+Offizielle Dokumentation: [Pages mit GitHub Actions](https://docs.github.com/en/pages/getting-started-with-github-pages/using-custom-workflows-with-github-pages), [eigene Domain](https://docs.github.com/en/pages/configuring-a-custom-domain-for-your-github-pages-site/managing-a-custom-domain-for-your-github-pages-site).
+
 ## Bedienung
 
 1. Eine `.ics`-Datei auswählen oder in das Importfeld ziehen. Alternativ die ausdrücklich gekennzeichneten Beispieldaten ausprobieren.
