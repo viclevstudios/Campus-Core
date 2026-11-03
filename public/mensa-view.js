@@ -1,4 +1,4 @@
-import { MENSA_STORAGE_KEY, canteenById, normalizePreferences, searchCanteens, berlinToday, weekStart, weekDates, addDays, formatWeekRange, availablePriceGroups, categoryTone, loadWeek, formatMealPrice, groupPastaMeals } from './mensa.js';
+import { MENSA_STORAGE_KEY, canteenById, normalizePreferences, searchCanteens, berlinToday, weekStart, weekDates, addDays, formatWeekRange, availablePriceGroups, categoryTone, loadWeek, formatMealPrice, groupPastaMeals, mensaDayLayout } from './mensa.js';
 
 const $ = id => document.getElementById(id);
 const escape = value => String(value ?? '').replace(/[&<>"']/g, char => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[char]);
@@ -33,13 +33,9 @@ function setDropdown(open, returnFocus = false) {
   if (open) { $('mensa-search').value = ''; renderOptions(); $('mensa-search').focus(); }
   else if (returnFocus) $('mensa-choose').focus();
 }
-const compactSettings = window.matchMedia('(max-width: 799px)');
-function syncSettingsPanel() {
-  $('mensa-settings-panel').open = !compactSettings.matches;
-  setDropdown(false);
-}
-compactSettings.addEventListener('change', syncSettingsPanel);
-syncSettingsPanel();
+const mobileLayout = window.matchMedia('(max-width: 720px)');
+$('mensa-settings-panel').open = true;
+mobileLayout.addEventListener('change', () => { setDropdown(false); renderDays(); });
 
 function renderSelection() {
   const canteen = canteenById(preferences.canteenId);
@@ -65,7 +61,8 @@ function renderDays() {
   const today = berlinToday(), container = $('mensa-days');
   const weekendOpen = container.querySelector('.mensa-weekend')?.open;
   const expanded = new Set([...container.querySelectorAll('.mensa-allergen-toggle[aria-expanded="true"]')].map(button => button.getAttribute('aria-controls')));
-  const markup = (days || weekDates(start).map(date => ({ date, status: 'loading', meals: [] }))).map(day => {
+  const layout = mensaDayLayout(days || weekDates(start).map(date => ({ date, status: 'loading', meals: [] })), start, today, mobileLayout.matches);
+  const dayMarkup = day => {
     const body = day.status === 'loading' ? '<p class="mensa-day-message">Speiseplan wird geladen …</p>'
       : day.status === 'error' ? `<p class="mensa-day-message mensa-day-error">${escape(day.message)} Bitte aktualisiere den Plan.</p>`
       : day.status === 'unpublished' ? '<p class="mensa-day-message">Kein Speiseplan</p>'
@@ -74,8 +71,8 @@ function renderDays() {
         return `<li class="mensa-meal"><div class="mensa-meal-meta"><span class="mensa-category"><i class="mensa-category-dot ${categoryTone(meal.category)}" aria-hidden="true"></i><span>${escape(meal.category || 'Gericht')}</span></span><span class="mensa-meal-price${meal.prices[priceGroup] === null ? ' mensa-price-missing' : ''}">${escape(formatMealPrice(meal, priceGroup))}</span></div><h4>${escape(meal.name)}</h4><button type="button" class="mensa-allergen-toggle" aria-expanded="${isOpen}" aria-controls="${id}" aria-label="Zusätzliche Informationen · ${meal.notes.length}: ${escape(meal.name)}">Zusätzliche Informationen · ${meal.notes.length}${chevron}</button><div id="${id}" class="mensa-notes"${isOpen ? '' : ' hidden'}>${meal.notes.length ? `<ul>${meal.notes.map(note => `<li>${escape(note)}</li>`).join('')}</ul>` : '<p>Keine Hinweise angegeben.</p>'}</div></li>`;
       }).join('')}</ul>`;
     return `<section class="mensa-day${day.date === today ? ' mensa-today' : ''}" aria-labelledby="mensa-day-${day.date}"><h3 id="mensa-day-${day.date}"><span>${dateFormat(day.date, { weekday: 'long' })}</span><time datetime="${day.date}">${dateFormat(day.date, { day: '2-digit', month: '2-digit' })}</time></h3>${body}</section>`;
-  });
-  container.innerHTML = `<div class="mensa-weekdays">${markup.slice(0, 5).join('')}</div><details class="mensa-weekend"${weekendOpen ? ' open' : ''}><summary>Wochenende anzeigen</summary><div class="mensa-weekend-days">${markup.slice(5).join('')}</div></details>`;
+  };
+  container.innerHTML = `<div class="mensa-weekdays">${layout.primary.map(dayMarkup).join('')}</div><details class="mensa-weekend"${weekendOpen ? ' open' : ''}><summary>Wochenende anzeigen</summary><div class="mensa-weekend-days">${layout.weekend.map(dayMarkup).join('')}</div></details>`;
 }
 function renderUpdated() {
   const successful = days?.filter(day => Number.isFinite(day.fetchedAt)) || [];
@@ -122,6 +119,7 @@ function route() {
     if (start < weekStart()) { start = weekStart(); opened = false; }
     if (!opened) { opened = true; void refresh(); }
   } else { setDropdown(false); request?.abort(); if (!days) opened = false; }
+  window.scrollTo(0, 0);
 }
 $('mensa-choose').addEventListener('click', () => setDropdown($('mensa-dropdown').hidden));
 $('mensa-search').addEventListener('input', renderOptions);

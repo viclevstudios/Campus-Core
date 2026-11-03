@@ -14,7 +14,7 @@
     const button = document.getElementById('theme-button');
     if (button) {
       const label = dark ? 'Heller Modus' : 'Dunkelmodus';
-      button.setAttribute('aria-label', dark ? 'Hellen Modus aktivieren' : 'Dunkelmodus aktivieren');
+      button.setAttribute('aria-label', label);
       button.setAttribute('aria-pressed', String(dark));
       document.getElementById('theme-label').textContent = label;
     }

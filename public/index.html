@@ -19,12 +19,12 @@
   <aside class="sidebar" aria-label="Navigation">
     <a class="brand" href="./" aria-label="Campus Core Startseite"><span class="brand-mark" aria-hidden="true">C</span><span>Campus Core</span></a>
     <nav aria-label="Hauptnavigation">
-      <a class="nav-item active" href="#overview" aria-current="page">Anwesenheit</a>
-      <a class="nav-item" href="#mensa">Mensa</a>
+      <a class="nav-item active" href="#overview" aria-current="page"><svg class="nav-icon" viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="5" width="16" height="16" rx="2"/><path d="M8 3v4M16 3v4M4 10h16m-11 5 2 2 4-4"/></svg><span>Anwesenheit</span></a>
+      <a class="nav-item" href="#mensa"><svg class="nav-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 3v5a3 3 0 0 0 6 0V3M7 3v18M20 21V3c-4 2-6 8 0 9"/></svg><span>Mensa</span></a>
     </nav>
     <div class="roadmap"><h2>In Planung</h2><p>Campus Dual</p></div>
     <div class="sidebar-bottom">
-      <button id="theme-button" class="theme-toggle" aria-label="Dunkelmodus aktivieren" aria-pressed="false"><svg class="theme-moon" viewBox="0 0 24 24" aria-hidden="true"><path d="M20.8 13.1A9 9 0 0 1 10.9 3.2 9 9 0 1 0 20.8 13.1Z"/></svg><svg class="theme-sun" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M2 12h2M20 12h2M5 5l1.5 1.5M17.5 17.5 19 19M5 19l1.5-1.5M17.5 6.5 19 5"/></svg><span id="theme-label">Dunkelmodus</span></button>
+      <button id="theme-button" class="theme-toggle" aria-label="Dunkelmodus" aria-pressed="false"><svg class="theme-moon" viewBox="0 0 24 24" aria-hidden="true"><path d="M20.8 13.1A9 9 0 0 1 10.9 3.2 9 9 0 1 0 20.8 13.1Z"/></svg><svg class="theme-sun" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M2 12h2M20 12h2M5 5l1.5 1.5M17.5 17.5 19 19M5 19l1.5-1.5M17.5 6.5 19 5"/></svg><span id="theme-label">Dunkelmodus</span></button>
     </div>
   </aside>
   <main id="overview">
@@ -33,6 +33,7 @@
       <h1>Anwesenheit</h1>
       <div class="file-block"><span id="upload-description">Kein Kalender geladen</span><button class="button primary" id="upload-button"><span id="upload-label">Datei auswählen</span></button><input type="file" id="file-input" accept=".ics,text/calendar" hidden></div>
     </header>
+    <div id="mobile-period-card" class="mobile-only calendar-panel"><button id="period-summary" class="period-summary" aria-haspopup="dialog" aria-controls="period-dialog"><span><strong id="period-summary-title">Zeitraum auswählen</strong><small id="period-summary-dates"></small></span><span data-icon="chevron"></span></button></div>
     <section id="dropzone" class="import-empty" aria-label="Kalender importieren"><h2>Stundenplan importieren</h2><p>ICS-Datei hier ablegen oder oben auswählen. Maximal 5 MB.</p><button id="demo-button" class="text-button">Beispieldaten laden</button></section>
     <div id="message" role="status" class="message" hidden></div>
     <section class="filter-panel" aria-label="Berechnung einstellen">
@@ -46,9 +47,10 @@
       <div class="stat"><span>Fehltermine übrig</span><strong id="stat-free">–</strong></div>
       <div class="stat"><span>Davon gefehlt</span><strong id="stat-planned">–</strong></div>
       <div class="stat"><span>Termine im Zeitraum</span><strong id="stat-events">–</strong></div>
+      <div id="mobile-rule-slot" class="mobile-only"></div>
     </section>
     <section id="subjects" class="subjects-section" aria-labelledby="subjects-title">
-      <div class="section-title"><h2 id="subjects-title">Fächer</h2><div class="subject-actions">
+      <div class="section-title"><h2 id="subjects-title">Fächer</h2><button id="subject-menu-button" class="mobile-only icon-button" aria-label="Fächer verwalten" aria-haspopup="menu" aria-expanded="false" popovertarget="subject-menu"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="5" cy="12" r="1"/><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/></svg></button><div class="subject-actions">
         <label id="search-field" class="search-field" hidden><span data-icon="search"></span><input id="search" type="search" placeholder="Fach suchen" aria-label="Fach suchen"></label>
         <div class="segmented" role="group" aria-label="Berechnungsweise"><button id="mode-joined" class="selected" aria-pressed="true">Pro Fach</button><button id="mode-split" aria-pressed="false">Pro Unterfach</button></div>
         <button class="button secondary" id="manage-button">Fach aufteilen</button>
@@ -57,6 +59,7 @@
       <div class="table-scroll" id="table-scroll" role="region" aria-label="Fehlbudgets je Fach, auf kleinen Bildschirmen horizontal scrollbar" tabindex="0" hidden>
         <table class="course-table" role="table" aria-label="Fehlbudgets"><thead role="rowgroup"><tr role="row"><th scope="col" role="columnheader"><span class="sr-only">Einbeziehen</span></th><th scope="col" role="columnheader" id="subject-column">Fach</th><th scope="col" role="columnheader"><span class="legend"><span><i class="legend-required" aria-hidden="true"></i>Pflicht</span><span><i class="legend-free" aria-hidden="true"></i>Frei</span><span><i class="legend-planned" aria-hidden="true"></i>Gefehlt</span></span></th><th scope="col" role="columnheader" class="numeric">Übrig</th><th scope="col" role="columnheader" class="numeric">Gefehlt</th><th scope="col" role="columnheader"><span class="sr-only">Termine</span></th></tr></thead><tbody id="course-grid" role="rowgroup"></tbody></table>
       </div>
+      <div id="course-cards" class="mobile-only course-cards" role="list" aria-label="Fehlbudgets je Fach"></div>
       <p class="scroll-hint" id="scroll-hint" hidden>Weitere Spalten durch seitliches Wischen anzeigen.</p>
       <div id="empty-state" class="empty-state"><p>Kein Stundenplan geladen.</p></div>
     </section>
@@ -89,6 +92,8 @@
       <footer class="mensa-footer"><p>Speisepläne und Preise von <a href="https://openmensa.org" target="_blank" rel="noopener noreferrer">OpenMensa</a></p></footer>
     </section>
   </main>
+  <dialog id="period-dialog" class="period-sheet" role="dialog" aria-labelledby="period-sheet-title"><div class="sheet-head"><h2 id="period-sheet-title">Zeitraum</h2><button type="button" class="icon-button close-dialog" aria-label="Zeitraum schließen"><span data-icon="close"></span></button></div><form id="mobile-period-form"><label class="field-label">Zeitraum<select id="mobile-period"></select></label><div class="sheet-dates"><label class="field-label">Von<input type="date" id="mobile-from"></label><label class="field-label">Bis<input type="date" id="mobile-to"></label></div><label class="sheet-switch"><span>Prüfungen mitzählen</span><input id="mobile-exams" type="checkbox" role="switch"><span class="switch-track" aria-hidden="true"></span></label><button class="button primary sheet-apply" type="submit">Übernehmen</button></form></dialog>
+  <div id="subject-menu" class="subject-menu" popover role="menu" aria-label="Fächer verwalten"><button type="button" role="menuitem" data-subject-action="manage-button">Fach aufteilen</button><button type="button" role="menuitem" data-subject-action="merge-button">Fächer zusammenfügen</button></div>
   <div id="rule-popover" class="rule-popover" popover role="dialog" aria-labelledby="rule-title">
     <div class="popover-head"><h2 id="rule-title">Rechenregel</h2><button class="icon-button" popovertarget="rule-popover" popovertargetaction="hide" aria-label="Rechenregel schließen"><span data-icon="close"></span></button></div>
     <p>Pflichttermine = ⌈Termine × <span id="rule-rate">0,7</span>⌉<br>Frei = Termine − Pflichttermine<br>Übrig = frei − gefehlt</p>

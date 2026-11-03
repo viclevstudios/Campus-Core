@@ -67,24 +67,23 @@
 .mensa-footer { margin-top: 16px; font-size: 12px; color: var(--muted); }
 .mensa-footer p { margin: 0; }
 .mensa-footer a { color: var(--accent-text); text-decoration: underline; text-underline-offset: 3px; }
-@media (max-width: 799px) {
-  .mensa-settings-panel { margin-bottom: 20px; }
-  .mensa-settings-panel>summary { display: list-item; min-height: 44px; padding: 12px 0; color: var(--accent-text); font-size: 14px; font-weight: 500; cursor: pointer; }
-  #mensa-mobile-selection { display: block; color: var(--muted); font-size: 13px; font-weight: 400; margin-top: 4px; }
-  .mensa-settings-panel[open] .mensa-settings { padding-top: 8px; }
-  .mensa-settings { flex-direction: column; }
-  .mensa-picker { flex: 0 1 auto; }
-  .mensa-price-field { justify-content: space-between; }
-  .mensa-price-field select { flex: 1; max-width: 240px; }
-  .mensa-week-bar { gap: 12px; }
-  .mensa-week-actions { margin-right: 0; }
-  #mensa-week-label { flex-basis: calc(100% - 112px); font-size: 18px; }
-}
-@media (max-width: 440px) {
-  .mensa-page-heading { gap: 12px; align-items: center; }
+@media (max-width: 720px) {
+  .mensa-page-heading { flex-wrap: nowrap; gap: 12px; margin-bottom: 20px; }
   .mensa-refresh-group { gap: 8px; font-size: 12px; }
-  .mensa-choose { gap: 10px; padding-inline: 12px; }
+  .mensa-settings-panel { margin-bottom: 20px; }
+  .mensa-settings { display: grid; grid-template-columns: minmax(0, 1fr); gap: 12px; }
+  .mensa-picker { width: 100%; }
+  .mensa-choose { gap: 10px; padding: 12px 16px; }
   .mensa-change { gap: 2px; font-size: 13px; }
-  .mensa-options { max-height: 260px; }
+  .mensa-price-field { justify-content: space-between; gap: 12px; min-width: 0; }
+  .mensa-price-field select { height: 44px; flex: 1; min-width: 0; max-width: none; border-radius: 8px; }
+  .mensa-week-bar { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 12px; padding: 20px 0; }
+  .mensa-week-actions { grid-row: 1; grid-column: 1; gap: 8px; margin: 0; }
+  #mensa-week-relative, #mensa-current { grid-row: 1; grid-column: 2; justify-self: end; }
+  #mensa-current { padding-inline: 10px; }
+  #mensa-week-label { grid-row: 2; grid-column: 1 / -1; font-size: 18px; overflow-wrap: anywhere; }
+  .mensa-weekdays, .mensa-weekend-days { grid-template-columns: minmax(0, 1fr); gap: 12px; }
+  .mensa-options { max-height: min(320px, 50dvh); }
+  .mensa-footer { margin-top: 20px; }
 }
 @media (prefers-reduced-motion: reduce) { .mensa-allergen-toggle svg { transition: none; } }

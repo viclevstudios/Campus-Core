@@ -53,12 +53,12 @@ test('Ohne Auswahl folgt die App Änderungen der Systempräferenz', () => {
 test('Umschalter speichert Auswahl und hält Beschriftung konsistent', () => {
   const b = browser(); b.ready(); b.toggle();
   assert.equal(b.values.get('campusplan.theme'), 'dark');
-  assert.equal(b.attributes['aria-label'], 'Hellen Modus aktivieren');
+  assert.equal(b.attributes['aria-label'], 'Heller Modus');
   const reload = browser({ saved: b.values.get('campusplan.theme') });
   assert.equal(reload.root.dataset.theme, 'dark');
   b.toggle();
   assert.equal(b.root.dataset.theme, 'light');
-  assert.equal(b.attributes['aria-label'], 'Dunkelmodus aktivieren');
+  assert.equal(b.attributes['aria-label'], 'Dunkelmodus');
 });
 test('Blockierter Browserspeicher verhindert den Theme-Wechsel nicht', () => {
   const b = browser({ blocked: true }); b.ready(); b.toggle();

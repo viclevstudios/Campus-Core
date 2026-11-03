@@ -45,6 +45,13 @@ export function weekStart(date = berlinToday()) {
   return addDays(date, -((day + 6) % 7));
 }
 export function weekDates(start) { return Array.from({ length: 7 }, (_, i) => addDays(start, i)); }
+export function mensaDayLayout(days, start, today, mobile = false) {
+  const primary = days.slice(0, 5), weekend = days.slice(5);
+  if (!mobile || start !== weekStart(today)) return { primary, weekend };
+  const current = days.find(day => day.date === today);
+  if (!current) return { primary, weekend };
+  return { primary: [current, ...primary.filter(day => day !== current)], weekend: weekend.filter(day => day !== current) };
+}
 export function formatWeekRange(start) {
   const from = parseDate(start), to = parseDate(addDays(start, 6));
   const day = date => String(date.getUTCDate()).padStart(2, '0') + '.';

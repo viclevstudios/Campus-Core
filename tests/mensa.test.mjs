@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { CANTEENS, canteenById, searchCanteens, normalizePreferences, berlinToday, weekStart, weekDates, addDays, formatWeekRange, availablePriceGroups, categoryTone, mealUrl, normalizeMeals, formatMealPrice, loadWeek, groupPastaMeals } from '../public/mensa.js';
+import { CANTEENS, canteenById, searchCanteens, normalizePreferences, berlinToday, weekStart, weekDates, addDays, formatWeekRange, availablePriceGroups, categoryTone, mealUrl, normalizeMeals, formatMealPrice, loadWeek, groupPastaMeals, mensaDayLayout } from '../public/mensa.js';
 import { readFile } from 'node:fs/promises';
 
 test('Lokaler Katalog hat eindeutige IDs und die richtige Mensa 69', () => {
@@ -28,6 +28,18 @@ test('Essen-URL verwendet ausschließlich eine lokale ID und ein gültiges Datum
   assert.throws(() => mealUrl('69/../70', '2026-11-03'));
   assert.throws(() => mealUrl(69, '2026-02-30'));
   assert.throws(() => mealUrl(69, '2026-11-03?x=1'));
+});
+test('mobil steht heute zuerst; Desktop und fremde Wochen behalten die Reihenfolge', () => {
+  const days = weekDates('2026-11-02').map(date => ({ date }));
+  const before = JSON.stringify(days);
+  assert.deepEqual(mensaDayLayout(days, '2026-11-02', '2026-11-03', true).primary.map(d => d.date), ['2026-11-03', '2026-11-02', '2026-11-04', '2026-11-05', '2026-11-06']);
+  assert.deepEqual(mensaDayLayout(days, '2026-11-02', '2026-11-03').primary, days.slice(0, 5));
+  assert.deepEqual(mensaDayLayout(days, '2026-11-02', '2026-10-27', true).primary, days.slice(0, 5));
+  const saturday = mensaDayLayout(days, '2026-11-02', '2026-11-07', true);
+  assert.equal(saturday.primary[0].date, '2026-11-07');
+  assert.deepEqual(saturday.weekend.map(d => d.date), ['2026-11-08']);
+  assert.equal(new Set([...saturday.primary, ...saturday.weekend]).size, 7);
+  assert.equal(JSON.stringify(days), before);
 });
 test('Wochenbeschriftung nennt bei Monats- und Jahresgrenzen beide Seiten', () => {
   assert.equal(formatWeekRange('2026-11-02'), '02.–08. November 2026');

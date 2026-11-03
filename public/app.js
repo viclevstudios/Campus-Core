@@ -3,6 +3,7 @@ import { demoCalendar } from './demo.js';
 import { mountSubjectPicker } from './subject-picker.js';
 
 const $ = id => document.getElementById(id);
+const mobileViewport = window.matchMedia('(max-width: 720px)');
 const escape = value => String(value ?? '').replace(/[&<>"']/g, char => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[char]);
 const paths = {
   grid: '<rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/>',
@@ -69,10 +70,16 @@ function uploadStatus() {
   const loaded = state.events.length > 0;
   $('dropzone').hidden = loaded;
   $('upload-description').textContent = loaded ? `${state.filename} · ${state.events.length} Termine${state.demo ? ' (Beispiel)' : ''}` : 'Kein Kalender geladen';
-  $('upload-label').textContent = loaded ? 'Datei wechseln' : 'Datei auswählen';
+  $('upload-label').textContent = loaded ? mobileViewport.matches ? 'Wechseln' : 'Datei wechseln' : 'Datei auswählen';
   $('manage-button').disabled = !subjectChoices().length;
   $('merge-button').disabled = subjectChoices().length < 2 && !state.groups.length;
   $('reset-button').hidden = !loaded;
+  const semester = semesterOptions(state.events).find(p => p.id === state.period);
+  $('period-summary-title').textContent = semester?.label || (state.period === 'all' ? 'Gesamter Kalender' : 'Eigener Zeitraum');
+  const dateLabel = date => date ? date.split('-').reverse().join('.') : '–';
+  $('period-summary-dates').textContent = `${dateLabel(state.from)} – ${dateLabel(state.to)}`;
+  document.querySelectorAll('[data-subject-action]').forEach(button => { button.disabled = $(button.dataset.subjectAction).disabled; });
+  $('subject-menu-button').disabled = $('manage-button').disabled && $('merge-button').disabled;
 }
 function render() {
   uploadStatus();
@@ -113,7 +120,13 @@ function render() {
       <td><button class="events-button" aria-label="Termine ansehen" aria-describedby="subject-name-${index}">${icon('chevron')}</button></td>
     </tr>`;
   }).join('');
-  for (const row of $('course-grid').querySelectorAll('[data-bucket]')) {
+  $('course-cards').hidden = !buckets.length;
+  $('course-cards').innerHTML = visible.map(b => {
+    const index = buckets.indexOf(b), title = b.part || b.subject;
+    const status = b.remaining <= 0 ? 'bad' : b.remaining <= 2 ? 'warning' : '';
+    return `<article class="course-card${state.excluded[b.key] ? ' unselected' : ''}" role="listitem" data-bucket="${index}" aria-labelledby="card-name-${index}"><label class="include-label"><input class="course-select" type="checkbox" ${state.excluded[b.key] ? '' : 'checked'} aria-label="Fach einbeziehen: ${escape(title)}"></label><div class="card-subject"><h3 id="card-name-${index}">${escape(title)}</h3>${b.part && b.part !== b.subject ? `<span class="course-parent">${escape(b.subject)}</span>` : ''}${b.splitPending ? '<span class="course-parent">Aufteilung noch unvollständig</span>' : ''}<button type="button" class="events-button card-events" aria-label="${b.total} ${b.total === 1 ? 'Termin' : 'Termine'} ansehen: ${escape(title)}"><span>${b.total} ${b.total === 1 ? 'Termin' : 'Termine'}</span>${icon('chevron')}</button></div><div class="card-budget"><strong class="remaining ${status}">${b.remaining}</strong><span>übrig</span></div><div class="card-progress"><div class="progress-bar" role="img" aria-label="${b.required} Pflichttermine, ${b.absent} gefehlt, ${b.remaining} übrig"><span class="progress-required"></span><span class="progress-planned"></span><span class="progress-rest"></span></div><span class="progress-caption">${b.required} Pflicht · ${b.allowed} frei${b.absent ? ` · ${b.absent} gefehlt` : ''}</span></div></article>`;
+  }).join('');
+  for (const row of document.querySelectorAll('#course-grid [data-bucket], #course-cards [data-bucket]')) {
     const b = buckets[Number(row.dataset.bucket)];
     // When over budget, planned absences keep their actual share; the achievable
     // attendance segment shrinks. The negative budget exposes the shortfall.
@@ -123,7 +136,80 @@ function render() {
     });
   }
   if (buckets.length && !visible.length) $('course-grid').innerHTML = '<tr class="empty-table-row"><td colspan="6">Keine Fächer für diese Suche gefunden.</td></tr>';
+  if (buckets.length && !visible.length) $('course-cards').innerHTML = '<p class="no-results">Keine Fächer für diese Suche gefunden.</p>';
 }
+
+function syncMobileChrome() {
+  const mobile = mobileViewport.matches;
+  (mobile ? $('mobile-period-card') : document.querySelector('#attendance-view>.page-heading')).append(document.querySelector('.file-block'));
+  (mobile ? $('mobile-rule-slot') : document.querySelector('.filter-panel')).append(document.querySelector('.rule-control'));
+  const stats = document.querySelectorAll('.stat>span');
+  stats[1].textContent = mobile ? 'Gefehlt' : 'Davon gefehlt';
+  stats[2].textContent = mobile ? 'Termine' : 'Termine im Zeitraum';
+  $('formula-button').setAttribute('aria-label', mobile ? 'Berechnung erklären' : 'Rechenregel und Quote anzeigen');
+  if (!mobile && $('period-dialog').open) $('period-dialog').close();
+  if (!mobile && $('subject-menu').matches(':popover-open')) $('subject-menu').hidePopover();
+  uploadStatus();
+}
+mobileViewport.addEventListener('change', syncMobileChrome);
+
+$('period-summary').addEventListener('click', () => {
+  $('mobile-period').innerHTML = $('period').innerHTML;
+  $('mobile-period').value = state.period;
+  $('mobile-from').value = state.from;
+  $('mobile-to').value = state.to;
+  $('mobile-exams').checked = state.includeExams;
+  $('mobile-to').setCustomValidity('');
+  $('period-dialog').showModal();
+});
+$('mobile-period').addEventListener('change', () => {
+  const period = $('mobile-period').value;
+  const option = semesterOptions(state.events).find(p => p.id === period);
+  if (option || period === 'all') {
+    $('mobile-from').value = option?.from || state.events[0]?.date || '';
+    $('mobile-to').value = option?.to || state.events.at(-1)?.date || '';
+  }
+  $('mobile-to').setCustomValidity('');
+});
+for (const id of ['mobile-from', 'mobile-to']) $(id).addEventListener('input', () => {
+  $('mobile-period').value = 'custom';
+  $('mobile-to').setCustomValidity('');
+});
+$('mobile-period-form').addEventListener('submit', event => {
+  event.preventDefault();
+  const from = $('mobile-from').value, to = $('mobile-to').value;
+  $('mobile-to').setCustomValidity(from && to && from > to ? 'Das Enddatum muss am oder nach dem Startdatum liegen.' : '');
+  if (!$('mobile-period-form').reportValidity()) return;
+  state.period = $('mobile-period').value;
+  state.from = from; state.to = to; state.includeExams = $('mobile-exams').checked;
+  periodControls(); save(); render(); $('period-dialog').close();
+});
+$('subject-menu').addEventListener('beforetoggle', event => {
+  const open = event.newState === 'open';
+  $('subject-menu-button').setAttribute('aria-expanded', String(open));
+  if (!open) return;
+  const rect = $('subject-menu-button').getBoundingClientRect();
+  const width = Math.min(244, window.innerWidth - 32);
+  $('subject-menu').style.width = `${width}px`;
+  $('subject-menu').style.left = `${Math.max(16, Math.min(rect.right - width, window.innerWidth - width - 16))}px`;
+  $('subject-menu').style.top = `${Math.max(60, Math.min(rect.bottom + 4, window.innerHeight - 160))}px`;
+});
+$('subject-menu').addEventListener('toggle', event => {
+  if (event.newState === 'open') $('subject-menu').querySelector('button:not(:disabled)')?.focus({ preventScroll: true });
+});
+$('subject-menu').addEventListener('click', event => {
+  const action = event.target.closest('[data-subject-action]');
+  if (!action) return;
+  $('subject-menu').hidePopover(); $(action.dataset.subjectAction).click();
+});
+$('subject-menu').addEventListener('keydown', event => {
+  if (!['ArrowDown', 'ArrowUp', 'Home', 'End'].includes(event.key)) return;
+  event.preventDefault();
+  const items = [...$('subject-menu').querySelectorAll('button:not(:disabled)')];
+  const index = items.indexOf(document.activeElement);
+  const next = event.key === 'Home' ? 0 : event.key === 'End' ? items.length - 1 : (index + (event.key === 'ArrowDown' ? 1 : -1) + items.length) % items.length;
+  items[next]?.focus();
+});
 
 function readInWorker(text) {
   return new Promise((resolve, reject) => {
@@ -179,19 +265,26 @@ for (const id of ['from', 'to']) $(id).addEventListener('change', () => { state[
 $('include-exams').addEventListener('change', () => { state.includeExams = $('include-exams').checked; save(); render(); });
 $('search').addEventListener('input', render);
 for (const [id, mode] of [['mode-joined', 'joined'], ['mode-split', 'split']]) $(id).addEventListener('click', () => { state.mode = mode; save(); render(); });
-$('course-grid').addEventListener('change', event => {
+for (const container of [$('course-grid'), $('course-cards')]) container.addEventListener('change', event => {
   if (!event.target.matches('.course-select')) return;
   const b = buckets[Number(event.target.closest('[data-bucket]').dataset.bucket)];
   if (event.target.checked) delete state.excluded[b.key]; else state.excluded[b.key] = true;
   save(); render();
   const index = buckets.findIndex(item => item.key === b.key);
-  $('course-grid').querySelector(`[data-bucket="${index}"] .course-select`)?.focus({ preventScroll: true });
+  container.querySelector(`[data-bucket="${index}"] .course-select`)?.focus({ preventScroll: true });
 });
-$('course-grid').addEventListener('click', event => {
+for (const container of [$('course-grid'), $('course-cards')]) container.addEventListener('click', event => {
   const button = event.target.closest('.events-button');
   if (!button) return;
   activeBucketKey = buckets[Number(button.closest('[data-bucket]').dataset.bucket)].key;
   renderEvents(); $('events-dialog').showModal();
+});
+$('events-dialog').addEventListener('close', () => {
+  const index = buckets.findIndex(b => b.key === activeBucketKey);
+  (mobileViewport.matches ? $('course-cards') : $('course-grid')).querySelector(`[data-bucket="${index}"] .events-button`)?.focus({ preventScroll: true });
+});
+for (const id of ['manage-dialog', 'merge-dialog']) $(id).addEventListener('close', () => {
+  if (mobileViewport.matches) $('subject-menu-button').focus({ preventScroll: true });
 });
 $('quote-form').addEventListener('submit', event => {
   event.preventDefault();
@@ -357,5 +450,5 @@ const savedSemester = semesterOptions(state.events).find(p => p.id === state.per
 if (savedSemester && (state.from !== savedSemester.from || state.to !== savedSemester.to)) {
   state.from = savedSemester.from; state.to = savedSemester.to; save();
 }
-periodControls(); render();
+periodControls(); syncMobileChrome(); render();
 if (!storageAvailable) message('Der lokale Speicher ist nicht verfügbar. Die App funktioniert für diese Sitzung; Änderungen bleiben beim Neuladen möglicherweise nicht erhalten.', true);
