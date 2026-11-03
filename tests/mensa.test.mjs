@@ -49,7 +49,7 @@ test('Pastateller vom 04.11.2026 wird einmal mit drei Komponenten und vier Hinwe
   const displayed = groupPastaMeals(meals, 'students');
   assert.equal(displayed.length, 2);
   assert.equal(displayed[0].name, 'Basmatireis mit Lauchzwiebeln');
-  assert.equal(displayed[1].name, 'Spirelli mit Curry-Sahnesoße mit Hähnchenfleisch, Geriebener Gouda');
+  assert.equal(displayed[1].name, 'Spirelli, Curry-Sahnesoße mit Hähnchenfleisch, Geriebener Gouda');
   assert.equal(displayed[1].prices.students, 2.1);
   assert.deepEqual(displayed[1].notes, ['glutenhaltiges Getreide', 'Weizen', 'Milch/ Milchzucker', 'Vegan']);
   assert.equal(JSON.stringify(meals), before);
@@ -66,7 +66,7 @@ test('beliebig viele Gerichte und Pasta-Preisgruppen bleiben an ihrer ersten Pos
     { name: 'Pesto', category: 'Nudelgericht', prices: { students: 2.1 } }
   ]);
   const displayed = groupPastaMeals(meals, 'students');
-  assert.deepEqual(displayed.map(m => m.name), ['Suppe', 'Spirelli mit Soße, Gouda', 'Premium-Pasta mit Premium-Soße', 'Schnitzel', 'Pesto']);
+  assert.deepEqual(displayed.map(m => m.name), ['Suppe', 'Spirelli, Soße, Gouda', 'Premium-Pasta, Premium-Soße', 'Schnitzel', 'Pesto']);
   assert.deepEqual(displayed[1].notes, ['Weizen', 'Milch']);
   assert.equal(displayed[0], meals[0]);
 });
@@ -94,31 +94,84 @@ test('Preise unterscheiden fehlende Angaben von einem kostenlosen Gericht', () =
   assert.throws(() => normalizeMeals({ meals: [] }));
   assert.throws(() => normalizeMeals([{}]));
 });
-test('Wochenabruf ruft nur sieben Essen-URLs auf, cached und aktualisiert ausdrücklich', async () => {
+test('Wochenabruf prüft zuerst die verfügbaren Tage, cached und aktualisiert ausdrücklich', async () => {
   let calls = [];
   let time = 0;
   const fetchImpl = async (url, options) => {
     calls.push({ url, options });
+    if (url.includes('/days?')) return { ok: true, status: 200, json: async () => weekDates('2026-11-02').map(date => ({ date, closed: false })) };
     return { ok: true, status: 200, json: async () => [{ name: 'Testgericht', prices: { students: 2.4 } }] };
   };
   const options = { fetchImpl, now: () => time };
   const result = await loadWeek(69, '2026-11-02', options);
-  assert.equal(calls.length, 7);
-  assert.ok(calls.every(c => /^https:\/\/openmensa.org\/api\/v2\/canteens\/69\/days\/2026-11-0[2-8]\/meals$/.test(c.url)));
+  assert.equal(calls.length, 8);
+  assert.equal(calls[0].url, 'https://openmensa.org/api/v2/canteens/69/days?start=2026-11-02');
+  assert.ok(calls.slice(1).every(c => /^https:\/\/openmensa.org\/api\/v2\/canteens\/69\/days\/2026-11-0[2-8]\/meals$/.test(c.url)));
   assert.ok(calls.every(c => c.options.credentials === 'omit' && c.options.referrerPolicy === 'no-referrer'));
   assert.equal(result[1].date, '2026-11-03');
   assert.ok(result.every(d => d.status === 'ready'));
   time = 60000;
   const cached = await loadWeek(69, '2026-11-02', options);
   assert.ok(cached.every(d => d.cached && d.fetchedAt === 0));
-  assert.equal(calls.length, 7);
-  await loadWeek(70, '2026-11-02', options); assert.equal(calls.length, 14);
-  await loadWeek(69, '2026-11-02', { ...options, force: true }); assert.equal(calls.length, 21);
+  assert.equal(calls.length, 8);
+  await loadWeek(70, '2026-11-02', options); assert.equal(calls.length, 16);
+  await loadWeek(69, '2026-11-02', { ...options, force: true }); assert.equal(calls.length, 24);
   time += 15 * 60 * 1000;
-  await loadWeek(69, '2026-11-02', options); assert.equal(calls.length, 28);
+  await loadWeek(69, '2026-11-02', options); assert.equal(calls.length, 32);
+});
+test('fehlende und geschlossene Tage erzeugen keine Gerichte-Anfragen oder 404-Antworten', async () => {
+  const calls = [];
+  const days = [{ date: '2026-12-01', closed: false }, { date: '2026-12-02', closed: true }, { date: '2026-12-10', closed: false }];
+  const result = await loadWeek(69, '2026-11-30', { force: true, fetchImpl: async url => {
+    calls.push(url);
+    if (url.includes('/days?')) return { ok: true, json: async () => days };
+    assert.equal(url, 'https://openmensa.org/api/v2/canteens/69/days/2026-12-01/meals');
+    return { ok: true, json: async () => [{ name: 'Gericht' }] };
+  } });
+  assert.equal(calls.length, 2);
+  assert.deepEqual(result.map(day => day.status), ['unpublished', 'ready', 'unpublished', 'unpublished', 'unpublished', 'unpublished', 'unpublished']);
+});
+test('leere Wochen werden mit einer Anfrage geladen; Aktualisieren erkennt neu veröffentlichte Tage', async () => {
+  let published = false, calls = 0;
+  const fetchImpl = async url => {
+    calls++;
+    return { ok: true, json: async () => url.includes('/days?') ? published ? [{ date: '2026-12-07', closed: false }] : [] : [{ name: 'Neu veröffentlicht' }] };
+  };
+  const empty = await loadWeek(69, '2026-12-07', { fetchImpl, force: true });
+  assert.ok(empty.every(day => day.status === 'unpublished'));
+  assert.equal(calls, 1);
+  published = true;
+  const cached = await loadWeek(69, '2026-12-07', { fetchImpl });
+  assert.ok(cached.every(day => day.cached && day.status === 'unpublished'));
+  assert.equal(calls, 1);
+  const refreshed = await loadWeek(69, '2026-12-07', { fetchImpl, force: true });
+  assert.equal(refreshed[0].status, 'ready');
+  assert.equal(calls, 3);
+});
+test('eine fehlerhafte Tagesliste wird nicht als leere Woche gespeichert', async () => {
+  for (const data of [{ error: 'broken' }, [{ date: 'kein-datum', closed: false }], [{ date: '2026-12-14', closed: 'false' }]]) {
+    let calls = 0;
+    const result = await loadWeek(69, '2026-12-14', { force: true, fetchImpl: async () => { calls++; return { ok: true, json: async () => data }; } });
+    assert.equal(calls, 1);
+    assert.ok(result.every(day => day.status === 'error'));
+  }
+  const recovered = await loadWeek(69, '2026-12-14', { fetchImpl: async () => ({ ok: true, json: async () => [] }) });
+  assert.ok(recovered.every(day => !day.cached && day.status === 'unpublished'));
+});
+test('mehrseitige Tageslisten werden vollständig berücksichtigt', async () => {
+  const calls = [];
+  const result = await loadWeek(69, '2026-12-21', { force: true, fetchImpl: async url => {
+    calls.push(url);
+    if (url.includes('/days?')) return { ok: true, headers: { get: () => '2' }, json: async () => url.includes('page=2') ? [{ date: '2026-12-23', closed: false }] : [] };
+    return { ok: true, json: async () => [{ name: 'Gericht auf Seite zwei' }] };
+  } });
+  assert.equal(calls.length, 3);
+  assert.match(calls[1], /start=2026-12-21&page=2$/);
+  assert.equal(result[2].status, 'ready');
 });
 test('Teilfehler, fehlender Plan und ungültige API-Daten bleiben unterscheidbar', async () => {
   const result = await loadWeek(69, '2026-11-09', { force: true, fetchImpl: async url => {
+    if (url.includes('/days?')) return { ok: true, json: async () => weekDates('2026-11-09').map(date => ({ date, closed: false })) };
     const day = Number(url.split('/').at(-2).slice(-2));
     if (day === 9) return { ok: false, status: 404 };
     if (day === 10) return { ok: true, status: 200, json: async () => [] };

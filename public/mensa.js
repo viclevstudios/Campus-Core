@@ -6,6 +6,7 @@ export const MENSA_STORAGE_KEY = 'campuscore.mensa.v1';
 export const PRICE_GROUPS = ['students', 'employees', 'pupils', 'others'];
 const byId = new Map(CANTEENS.map(c => [c.id, c]));
 const cache = new Map();
+const dayCache = new Map();
 const CACHE_MS = 15 * 60 * 1000;
 
 export function canteenById(id) { return byId.get(Number(id)); }
@@ -99,39 +100,95 @@ export function groupPastaMeals(meals, priceGroup) {
     }
     group.components.push(meal.name);
     group.notes = [...new Set([...group.notes, ...meal.notes])];
-    const [base, accompaniment, ...extras] = group.components;
-    group.name = base + (accompaniment ? ` mit ${accompaniment}` : '') + extras.map(name => `, ${name}`).join('');
+    group.name = group.components.join(', ');
   }
   return result;
 }
 
+async function requestJson(url, { signal, fetchImpl, timeoutMs, allowMissing = false }) {
+  if (signal?.aborted) throw signal.reason;
+  const controller = new AbortController();
+  const abort = () => controller.abort(signal.reason);
+  signal?.addEventListener('abort', abort, { once: true });
+  const timeout = setTimeout(() => controller.abort(), timeoutMs);
+  try {
+    const response = await fetchImpl(url, { signal: controller.signal, credentials: 'omit', referrerPolicy: 'no-referrer', cache: 'no-store', redirect: 'error' });
+    if (allowMissing && response.status === 404) return { data: [], missing: true };
+    if (!response.ok) throw new Error(`HTTP ${response.status}`);
+    const data = await response.json();
+    if (signal?.aborted) throw signal.reason;
+    return { data, pages: Number(response.headers?.get('x-total-pages') || 1) };
+  } catch (error) {
+    if (signal?.aborted) throw error;
+    if (controller.signal.aborted) throw new Error('Die Anfrage hat zu lange gedauert.');
+    throw error;
+  } finally {
+    clearTimeout(timeout);
+    signal?.removeEventListener('abort', abort);
+  }
+}
+
 export async function loadWeek(canteenId, start, { signal, force = false, fetchImpl = globalThis.fetch, now = Date.now, timeoutMs = 12000 } = {}) {
-  // Resolve the ID solely from the shipped catalog. Never fetch canteen metadata.
+  // The canteen ID still comes exclusively from the local catalog. Check which
+  // days exist before requesting meals, avoiding routine 404 network errors.
   const urls = weekDates(start).map(date => ({ date, url: mealUrl(canteenId, date) }));
+  const options = { signal, fetchImpl, timeoutMs };
+  const cachedMeal = url => {
+    const entry = cache.get(url);
+    return !force && entry && now() - entry.time < CACHE_MS ? entry.result : null;
+  };
+  if (signal?.aborted) throw signal.reason;
+  if (urls.every(({ url }) => cachedMeal(url))) return urls.map(({ url }) => ({ ...cachedMeal(url), cached: true }));
+  const daysUrl = `https://openmensa.org/api/v2/canteens/${Number(canteenId)}/days?start=${start}`;
+  let available = dayCache.get(daysUrl), availabilityError;
+  if (force || !available || now() - available.time >= CACHE_MS) {
+    try {
+      const days = new Map();
+      let page = 1, pages = 1;
+      do {
+        const response = await requestJson(daysUrl + (page > 1 ? `&page=${page}` : ''), options);
+        if (!Array.isArray(response.data) || !Number.isInteger(response.pages) || response.pages < 1 || response.pages > 20) throw new Error('Ungültige Liste der Speiseplantage.');
+        pages = response.pages;
+        for (const day of response.data) {
+          if (!day || typeof day.closed !== 'boolean') throw new Error('Ungültiger Speiseplantag.');
+          parseDate(day.date);
+          if (days.has(day.date) && days.get(day.date) !== day.closed) throw new Error('Widersprüchliche Speiseplantage.');
+          days.set(day.date, day.closed);
+        }
+        page++;
+      } while (page <= pages);
+      if (signal?.aborted) throw signal.reason;
+      available = { days, time: now() };
+      if (dayCache.size >= 56) dayCache.delete(dayCache.keys().next().value);
+      dayCache.set(daysUrl, available);
+    } catch (error) {
+      if (signal?.aborted) throw error;
+      availabilityError = error;
+    }
+  }
   return Promise.all(urls.map(async ({ date, url }) => {
     if (signal?.aborted) throw signal.reason;
-    const cached = cache.get(url);
-    if (!force && cached && now() - cached.time < CACHE_MS) return { ...cached.result, cached: true };
-    const controller = new AbortController();
-    const abort = () => controller.abort(signal.reason);
-    signal?.addEventListener('abort', abort, { once: true });
-    const timeout = setTimeout(() => controller.abort(), timeoutMs);
+    const cached = cachedMeal(url);
+    if (cached) return { ...cached, cached: true };
     try {
-      const response = await fetchImpl(url, { signal: controller.signal, credentials: 'omit', referrerPolicy: 'no-referrer', cache: 'no-store', redirect: 'error' });
-      if (!response.ok && response.status !== 404) throw new Error(`HTTP ${response.status}`);
-      const meals = response.status === 404 ? [] : normalizeMeals(await response.json());
-      const result = { date, status: meals.length ? 'ready' : 'unpublished', meals, fetchedAt: now() };
-      if (!signal?.aborted) {
-        if (cache.size >= 280) cache.delete(cache.keys().next().value);
-        cache.set(url, { time: now(), result });
+      if (availabilityError) throw availabilityError;
+      let meals = [], fetchedAt = available.time;
+      if (available.days.get(date) === false) {
+        const response = await requestJson(url, { ...options, allowMissing: true });
+        meals = normalizeMeals(response.data);
+        fetchedAt = now();
+        // A listed day can disappear between requests. Handle that race and
+        // recheck availability on the next uncached load.
+        if (response.missing) dayCache.delete(daysUrl);
       }
+      const result = { date, status: meals.length ? 'ready' : 'unpublished', meals, fetchedAt };
+      if (signal?.aborted) throw signal.reason;
+      if (cache.size >= 280) cache.delete(cache.keys().next().value);
+      cache.set(url, { time: now(), result });
       return { ...result, cached: false };
     } catch (error) {
       if (signal?.aborted) throw error;
-      return { date, status: 'error', meals: [], message: controller.signal.aborted ? 'Die Anfrage hat zu lange gedauert.' : 'Der Speiseplan konnte nicht geladen werden.' };
-    } finally {
-      clearTimeout(timeout);
-      signal?.removeEventListener('abort', abort);
+      return { date, status: 'error', meals: [], message: error.message === 'Die Anfrage hat zu lange gedauert.' ? error.message : 'Der Speiseplan konnte nicht geladen werden.' };
     }
   }));
 }

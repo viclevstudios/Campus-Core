@@ -72,4 +72,6 @@ Berechnungswahl und beide Fachaktionen besitzen dieselbe äußere Höhe (52 px),
 
 ## Pastateller
 
-Die bestehende Gerichtdarstellung wird für Pastateller wiederverwendet. Innerhalb eines Tages bilden Einträge mit gleichem bekanntem Preis der aktiven Preisgruppe eine Gruppe. Der Preis bleibt einmal sichtbar, Namen werden in Quellenreihenfolge verbunden (erste Komponente mit zweiter, weitere durch Komma), Zusatzinformationen ohne Duplikate vereinigt. Andere Kategorien und Einträge ohne Preis bleiben einzeln. Preisgruppenwechsel gruppiert die Originaldaten erneut; es wird keine feste Anzahl von Tagesgerichten vorausgesetzt.
+Die bestehende Gerichtdarstellung wird für Pastateller wiederverwendet. Innerhalb eines Tages bilden Einträge mit gleichem bekanntem Preis der aktiven Preisgruppe eine Gruppe. Der Preis bleibt einmal sichtbar, Namen werden in Quellenreihenfolge ausschließlich durch Kommas verbunden, Zusatzinformationen ohne Duplikate vereinigt. Andere Kategorien und Einträge ohne Preis bleiben einzeln. Preisgruppenwechsel gruppiert die Originaldaten erneut; es wird keine feste Anzahl von Tagesgerichten vorausgesetzt.
+
+Fehlende Speiseplantage werden vor dem Gerichte-Abruf anhand der Tagesliste erkannt. Nicht vorhandene bzw. geschlossene Tage bleiben bei „Kein Speiseplan“, ohne routinemäßige 404-Anfragen. Abruffehler bleiben als Fehler sichtbar.
