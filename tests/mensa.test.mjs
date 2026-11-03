@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { CANTEENS, canteenById, searchCanteens, normalizePreferences, berlinToday, weekStart, weekDates, addDays, formatWeekRange, availablePriceGroups, categoryTone, mealUrl, normalizeMeals, formatMealPrice, loadWeek } from '../public/mensa.js';
+import { CANTEENS, canteenById, searchCanteens, normalizePreferences, berlinToday, weekStart, weekDates, addDays, formatWeekRange, availablePriceGroups, categoryTone, mealUrl, normalizeMeals, formatMealPrice, loadWeek, groupPastaMeals } from '../public/mensa.js';
+import { readFile } from 'node:fs/promises';
 
 test('Lokaler Katalog hat eindeutige IDs und die richtige Mensa 69', () => {
   assert.ok(CANTEENS.length >= 1306);
@@ -40,7 +41,49 @@ test('Preisgruppen stammen aus vorhandenen Preisen; kostenlose Gerichte zählen 
   assert.equal(categoryTone('Fleischgericht'), 'meat');
   assert.equal(categoryTone('Veganes Gericht'), 'veg');
   assert.equal(categoryTone('Vegetarisches Gericht'), 'veg');
-  assert.equal(categoryTone('Pastateller'), 'other');
+  assert.equal(categoryTone('Pastateller'), 'pasta');
+});
+test('Pastateller vom 04.11.2026 wird einmal mit drei Komponenten und vier Hinweisen dargestellt', async () => {
+  const raw = JSON.parse(await readFile(new URL('./fixtures/openmensa-69-2026-11-04.json', import.meta.url), 'utf8'));
+  const meals = normalizeMeals(raw), before = JSON.stringify(meals);
+  const displayed = groupPastaMeals(meals, 'students');
+  assert.equal(displayed.length, 2);
+  assert.equal(displayed[0].name, 'Basmatireis mit Lauchzwiebeln');
+  assert.equal(displayed[1].name, 'Spirelli mit Curry-Sahnesoße mit Hähnchenfleisch, Geriebener Gouda');
+  assert.equal(displayed[1].prices.students, 2.1);
+  assert.deepEqual(displayed[1].notes, ['glutenhaltiges Getreide', 'Weizen', 'Milch/ Milchzucker', 'Vegan']);
+  assert.equal(JSON.stringify(meals), before);
+});
+test('beliebig viele Gerichte und Pasta-Preisgruppen bleiben an ihrer ersten Position', () => {
+  const meals = normalizeMeals([
+    { name: 'Suppe', category: 'Vegetarisches Gericht', prices: { students: 2.1 } },
+    { name: 'Spirelli', category: 'Pastateller', prices: { students: 2.1 }, notes: ['Weizen'] },
+    { name: 'Premium-Pasta', category: 'Pastateller', prices: { students: 3.5 } },
+    { name: 'Schnitzel', category: 'Fleischgericht', prices: { students: 2.1 } },
+    { name: 'Soße', category: 'Pastateller', prices: { students: 2.1 }, notes: ['Weizen', 'Milch'] },
+    { name: 'Premium-Soße', category: 'Pastateller', prices: { students: 3.5 } },
+    { name: 'Gouda', category: 'Pastateller', prices: { students: 2.1 } },
+    { name: 'Pesto', category: 'Nudelgericht', prices: { students: 2.1 } }
+  ]);
+  const displayed = groupPastaMeals(meals, 'students');
+  assert.deepEqual(displayed.map(m => m.name), ['Suppe', 'Spirelli mit Soße, Gouda', 'Premium-Pasta mit Premium-Soße', 'Schnitzel', 'Pesto']);
+  assert.deepEqual(displayed[1].notes, ['Weizen', 'Milch']);
+  assert.equal(displayed[0], meals[0]);
+});
+test('aktive Preisgruppe entscheidet; fehlende Preise werden nicht als gleiche Preise behandelt', () => {
+  const meals = normalizeMeals([
+    { name: 'Pasta', category: 'Pastateller', prices: { students: 2.1, employees: 4.6, others: 0 } },
+    { name: 'Soße', category: 'Pastateller', prices: { students: 2.1, employees: 5, others: 0 } },
+    { name: 'Ohne Preis', category: 'Pastateller' },
+    { name: 'Auch ohne Preis', category: 'Pastateller' }
+  ]);
+  assert.equal(groupPastaMeals(meals, 'students').length, 3);
+  assert.equal(groupPastaMeals(meals, 'employees').length, 4);
+  assert.equal(groupPastaMeals(meals, 'others').length, 3);
+  assert.equal(groupPastaMeals(meals, 'pupils').length, 4);
+  assert.deepEqual(groupPastaMeals([], 'students'), []);
+  const days = [meals.slice(0, 1), meals.slice(1, 2)].map(day => groupPastaMeals(day, 'students'));
+  assert.deepEqual(days.map(day => day[0].name), ['Pasta', 'Soße']);
 });
 test('Preise unterscheiden fehlende Angaben von einem kostenlosen Gericht', () => {
   const [meal] = normalizeMeals([{ name: '<img src=x>', prices: { students: 0, employees: null, others: -2 }, notes: ['Vegan', null] }]);

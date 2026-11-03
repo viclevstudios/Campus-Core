@@ -81,6 +81,30 @@ export function formatMealPrice(meal, group) {
   return typeof price === 'number' ? new Intl.NumberFormat('de-DE', { style: 'currency', currency: 'EUR' }).format(price) : 'Preis nicht angegeben';
 }
 
+// Display grouping is scoped to one day and the currently selected price group.
+// Keep the API meals unchanged so another price group can be grouped afresh.
+export function groupPastaMeals(meals, priceGroup) {
+  const result = [], groups = new Map();
+  for (const meal of meals) {
+    const price = meal.prices[priceGroup];
+    if (!/^Pastateller$/i.test(meal.category.trim()) || typeof price !== 'number' || !Number.isFinite(price)) {
+      result.push(meal);
+      continue;
+    }
+    let group = groups.get(price);
+    if (!group) {
+      group = { ...meal, notes: [...new Set(meal.notes)], components: [] };
+      groups.set(price, group);
+      result.push(group);
+    }
+    group.components.push(meal.name);
+    group.notes = [...new Set([...group.notes, ...meal.notes])];
+    const [base, accompaniment, ...extras] = group.components;
+    group.name = base + (accompaniment ? ` mit ${accompaniment}` : '') + extras.map(name => `, ${name}`).join('');
+  }
+  return result;
+}
+
 export async function loadWeek(canteenId, start, { signal, force = false, fetchImpl = globalThis.fetch, now = Date.now, timeoutMs = 12000 } = {}) {
   // Resolve the ID solely from the shipped catalog. Never fetch canteen metadata.
   const urls = weekDates(start).map(date => ({ date, url: mealUrl(canteenId, date) }));

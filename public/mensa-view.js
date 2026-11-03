@@ -1,4 +1,4 @@
-import { MENSA_STORAGE_KEY, canteenById, normalizePreferences, searchCanteens, berlinToday, weekStart, weekDates, addDays, formatWeekRange, availablePriceGroups, categoryTone, loadWeek, formatMealPrice } from './mensa.js';
+import { MENSA_STORAGE_KEY, canteenById, normalizePreferences, searchCanteens, berlinToday, weekStart, weekDates, addDays, formatWeekRange, availablePriceGroups, categoryTone, loadWeek, formatMealPrice, groupPastaMeals } from './mensa.js';
 
 const $ = id => document.getElementById(id);
 const escape = value => String(value ?? '').replace(/[&<>"']/g, char => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[char]);
@@ -69,7 +69,7 @@ function renderDays() {
     const body = day.status === 'loading' ? '<p class="mensa-day-message">Speiseplan wird geladen …</p>'
       : day.status === 'error' ? `<p class="mensa-day-message mensa-day-error">${escape(day.message)} Bitte aktualisiere den Plan.</p>`
       : day.status === 'unpublished' ? '<p class="mensa-day-message">Kein Speiseplan</p>'
-      : `<ul class="mensa-meals">${day.meals.map((meal, index) => {
+      : `<ul class="mensa-meals">${groupPastaMeals(day.meals, priceGroup).map((meal, index) => {
         const id = `mensa-notes-${day.date}-${index}`, isOpen = expanded.has(id);
         return `<li class="mensa-meal"><div class="mensa-meal-meta"><span class="mensa-category"><i class="mensa-category-dot ${categoryTone(meal.category)}" aria-hidden="true"></i><span>${escape(meal.category || 'Gericht')}</span></span><span class="mensa-meal-price${meal.prices[priceGroup] === null ? ' mensa-price-missing' : ''}">${escape(formatMealPrice(meal, priceGroup))}</span></div><h4>${escape(meal.name)}</h4><button type="button" class="mensa-allergen-toggle" aria-expanded="${isOpen}" aria-controls="${id}" aria-label="Zusätzliche Informationen · ${meal.notes.length}: ${escape(meal.name)}">Zusätzliche Informationen · ${meal.notes.length}${chevron}</button><div id="${id}" class="mensa-notes"${isOpen ? '' : ' hidden'}>${meal.notes.length ? `<ul>${meal.notes.map(note => `<li>${escape(note)}</li>`).join('')}</ul>` : '<p>Keine Hinweise angegeben.</p>'}</div></li>`;
       }).join('')}</ul>`;

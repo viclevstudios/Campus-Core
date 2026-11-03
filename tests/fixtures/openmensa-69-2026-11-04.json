@@ -1,0 +1,30 @@
+[
+  {
+    "id": 29258194,
+    "name": "Basmatireis mit Lauchzwiebeln",
+    "category": "Vegetarisches Gericht",
+    "prices": { "students": 2.65, "employees": 5.1, "pupils": null, "others": 7 },
+    "notes": ["Champignonpfanne mit Hirtenkäse", "Vegan", "Vegetarisch", "geschwärzt", "Milch/ Milchzucker"]
+  },
+  {
+    "id": 29258195,
+    "name": "Spirelli",
+    "category": "Pastateller",
+    "prices": { "students": 2.1, "employees": 4.6, "pupils": null, "others": 6.35 },
+    "notes": ["glutenhaltiges Getreide", "Weizen", "Milch/ Milchzucker", "Vegan"]
+  },
+  {
+    "id": 29258196,
+    "name": "Curry-Sahnesoße mit Hähnchenfleisch",
+    "category": "Pastateller",
+    "prices": { "students": 2.1, "employees": 4.6, "pupils": null, "others": 6.35 },
+    "notes": ["glutenhaltiges Getreide", "Weizen", "Milch/ Milchzucker", "Vegan"]
+  },
+  {
+    "id": 29214975,
+    "name": "Geriebener Gouda",
+    "category": "Pastateller",
+    "prices": { "students": 2.1, "employees": 4.6, "pupils": null, "others": 6.35 },
+    "notes": ["glutenhaltiges Getreide", "Weizen", "Milch/ Milchzucker", "Vegan"]
+  }
+]

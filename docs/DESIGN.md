@@ -69,3 +69,7 @@ Semester beginnen am Montag der Woche des 1. April bzw. 1. Oktober und enden am 
 Neben „Fach aufteilen“ steht „Fächer zusammenfügen“. Die gemeinsame Fachbezeichnung und mindestens zwei explizit ausgewählte Kalenderfächer ergeben ein gemeinsames Budget. Suche und Mehrfachauswahl im Dialog; bestehende Verbindungen sind dort aufhebbar. Ursprüngliche Termine, Fehlmarkierungen und Aufteilungsentwürfe bleiben erhalten. Keine automatische Zusammenführung von Labor oder ähnlich benannten Fächern. Auch zusammengefügte Fächer können manuell aufgeteilt werden.
 
 Berechnungswahl und beide Fachaktionen besitzen dieselbe äußere Höhe (52 px), Textausrichtung und jeweils 10 px vertikales CSS-Padding. Mobil umbrechen die Aktionen.
+
+## Pastateller
+
+Die bestehende Gerichtdarstellung wird für Pastateller wiederverwendet. Innerhalb eines Tages bilden Einträge mit gleichem bekanntem Preis der aktiven Preisgruppe eine Gruppe. Der Preis bleibt einmal sichtbar, Namen werden in Quellenreihenfolge verbunden (erste Komponente mit zweiter, weitere durch Komma), Zusatzinformationen ohne Duplikate vereinigt. Andere Kategorien und Einträge ohne Preis bleiben einzeln. Preisgruppenwechsel gruppiert die Originaldaten erneut; es wird keine feste Anzahl von Tagesgerichten vorausgesetzt.
