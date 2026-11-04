@@ -21,6 +21,7 @@
     <nav aria-label="Hauptnavigation">
       <a class="nav-item active" href="#overview" aria-current="page"><svg class="nav-icon" viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="5" width="16" height="16" rx="2"/><path d="M8 3v4M16 3v4M4 10h16m-11 5 2 2 4-4"/></svg><span>Anwesenheit</span></a>
       <a class="nav-item" href="#mensa"><svg class="nav-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 3v5a3 3 0 0 0 6 0V3M7 3v18M20 21V3c-4 2-6 8 0 9"/></svg><span>Mensa</span></a>
+      <a class="nav-item" href="#export"><svg class="nav-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v12m-4-4 4 4 4-4M4 16v4a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-4"/></svg><span>Export</span></a>
     </nav>
     <div class="roadmap"><h2>In Planung</h2><p>Campus Dual</p></div>
     <div class="sidebar-bottom">
@@ -34,7 +35,7 @@
       <div class="file-block"><span id="upload-description">Kein Kalender geladen</span><button class="button primary" id="upload-button"><span id="upload-label">Datei auswählen</span></button><input type="file" id="file-input" accept=".ics,text/calendar" hidden></div>
     </header>
     <div id="mobile-period-card" class="mobile-only calendar-panel"><button id="period-summary" class="period-summary" aria-haspopup="dialog" aria-controls="period-dialog"><span><strong id="period-summary-title">Zeitraum auswählen</strong><small id="period-summary-dates"></small></span><span data-icon="chevron"></span></button></div>
-    <section id="dropzone" class="import-empty" aria-label="Kalender importieren"><h2>Stundenplan importieren</h2><p>ICS-Datei hier ablegen oder oben auswählen. Maximal 5 MB.</p><button id="demo-button" class="text-button">Beispieldaten laden</button></section>
+    <section id="dropzone" class="import-empty" aria-label="Kalender importieren"><h2>Stundenplan importieren</h2><p>ICS-Datei hier ablegen oder oben auswählen (Maximal 5 MB)</p><button id="demo-button" class="text-button">Beispieldaten laden</button></section>
     <div id="message" role="status" class="message" hidden></div>
     <section class="filter-panel" aria-label="Berechnung einstellen">
       <label class="period-field">Zeitraum<select id="period"><option value="all">Gesamter Kalender</option></select></label>
@@ -90,6 +91,30 @@
       <p id="mensa-status" class="mensa-status" role="status" aria-live="polite" hidden></p>
       <div id="mensa-days" class="mensa-days" aria-busy="false"></div>
       <footer class="mensa-footer"><p>Speisepläne und Preise von <a href="https://openmensa.org" target="_blank" rel="noopener noreferrer">OpenMensa</a></p></footer>
+    </section>
+    <section id="export-page" class="transfer-page" aria-labelledby="export-title" hidden>
+      <header class="page-heading"><h1 id="export-title">Export</h1></header>
+      <p id="transfer-status" class="message" role="status" hidden></p>
+      <div class="transfer-panel">
+        <section class="transfer-section" aria-labelledby="backup-export-title">
+          <h2 id="backup-export-title">Daten exportieren</h2>
+          <p>Speichere Kalender, Fehltermine, Fachaufteilungen, zusammengefügte Fächer und Berechnungseinstellungen als JSON-Datei.</p>
+          <dl class="transfer-summary"><div><dt>Kalender</dt><dd id="export-filename"></dd></div><div><dt>Termine</dt><dd id="export-events">0</dd></div><div><dt>Fehltermine</dt><dd id="export-absences">0</dd></div><div><dt>Kalenderfächer</dt><dd id="export-subjects">0</dd></div><div><dt>Zusammengefügte Fächer</dt><dd id="export-groups">0</dd></div></dl>
+          <button id="backup-download" type="button" class="button primary">Datei exportieren</button>
+        </section>
+        <section class="transfer-section" aria-labelledby="backup-import-title">
+          <h2 id="backup-import-title">Daten importieren</h2>
+          <p>Wähle eine Campus-Core-Sicherung von diesem oder einem anderen Gerät.</p>
+          <button id="backup-choose" type="button" class="button secondary" aria-controls="backup-preview">JSON-Datei auswählen</button><input id="backup-file" type="file" accept=".json,application/json" hidden>
+          <p class="transfer-note">Maximal 20 MB.</p>
+          <div id="backup-preview" class="transfer-preview" hidden>
+            <h3>Vorschau</h3><p id="import-file-name" class="transfer-file-name"></p><p class="transfer-note">Exportiert am <time id="import-exported-at"></time></p>
+            <dl class="transfer-summary"><div><dt>Kalender</dt><dd id="import-filename"></dd></div><div><dt>Termine</dt><dd id="import-events">0</dd></div><div><dt>Fehltermine</dt><dd id="import-absences">0</dd></div><div><dt>Kalenderfächer</dt><dd id="import-subjects">0</dd></div><div><dt>Zusammengefügte Fächer</dt><dd id="import-groups">0</dd></div></dl>
+            <p id="backup-replace-note">Beim Import werden die aktuellen Anwesenheitsdaten ersetzt. Du kannst sie vorher oben exportieren.</p>
+            <div class="transfer-actions"><button id="backup-restore" type="button" class="button primary" aria-describedby="backup-replace-note">Daten importieren</button><button id="backup-cancel" type="button" class="button secondary">Verwerfen</button></div>
+          </div>
+        </section>
+      </div>
     </section>
   </main>
   <dialog id="period-dialog" class="period-sheet" role="dialog" aria-labelledby="period-sheet-title"><div class="sheet-head"><h2 id="period-sheet-title">Zeitraum</h2><button type="button" class="icon-button close-dialog" aria-label="Zeitraum schließen"><span data-icon="close"></span></button></div><form id="mobile-period-form"><label class="field-label">Zeitraum<select id="mobile-period"></select></label><div class="sheet-dates"><label class="field-label">Von<input type="date" id="mobile-from"></label><label class="field-label">Bis<input type="date" id="mobile-to"></label></div><label class="sheet-switch"><span>Prüfungen mitzählen</span><input id="mobile-exams" type="checkbox" role="switch"><span class="switch-track" aria-hidden="true"></span></label><button class="button primary sheet-apply" type="submit">Übernehmen</button></form></dialog>

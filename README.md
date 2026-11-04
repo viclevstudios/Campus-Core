@@ -56,6 +56,18 @@ Bei `N` Terminen sind mindestens `ceil(N × 7 / 10)` Anwesenheiten nötig. Maxim
 
 **Ein ICS-Unterrichtsblock zählt als ein Termin**, unabhängig von seiner Dauer. Mehrere Blöcke am selben Tag zählen separat. Falls die Hochschule nach Stunden, Tagen oder unterschiedlich gewichteten Veranstaltungen rechnet, ist diese Zählweise nicht gleichwertig. Prüfungen (`P …`, Prüfung/Klausur/Exam) werden standardmäßig ausgenommen und können zugeschaltet werden. `VS`, Labor und Übung bleiben als eigene Kalendereinträge getrennt. Es werden keine Fachnamen über unsichere Abkürzungsheuristiken zusammengeführt.
 
+## Anwesenheitsdaten sichern und übertragen
+
+Die Seite **Export** ist in der Desktop-Navigation und als dritter Tab auf dem Handy erreichbar.
+
+1. **Datei exportieren** lädt `campus-core-JJJJ-MM-TT.json` herunter. Die Sicherung enthält den vollständigen Kalender, Fehlmarkierungen, Fachaufteilungen samt Standard-Unterfächern und Einzelzuordnungen, zusammengefügte Fächer, abgewählte Budgets, Anwesenheitsquote, Berechnungsmodus, Zeitraum und Prüfungsoption.
+2. Auf demselben oder einem anderen Gerät **Export → JSON-Datei auswählen** öffnen. Die Datei wird lokal geprüft (maximal 20 MB). Die Vorschau nennt Kalender, Termin-/Fehlterminanzahl und Exportzeitpunkt.
+3. **Daten importieren** ersetzt die aktuellen Anwesenheitsdaten. Bis zu diesem Klick bleibt der bestehende Kalender erhalten. Über **Verwerfen** lässt sich die Vorschau schließen. Eine eigene Sicherung der bisherigen Daten kann vorher über den Exportbutton erstellt werden.
+
+Beschädigte oder fremde Dateien sowie unbekannte Sicherungsversionen werden zurückgewiesen. Ein Import wird erst in den laufenden Zustand übernommen, nachdem das Speichern erfolgreich war; ein Speicherfehler erhält die bisherigen Daten. Die Datei wird weder beim Export noch beim Import an einen Server übertragen. Sie ist unverschlüsselt und enthält die Angaben des Kalenders einschließlich Räumen und Fehlmarkierungen.
+
+Das JSON-Format ist mit `format: campus-core-backup` und `version: 1` gekennzeichnet. Es enthält den Exportzeitpunkt und den Anwesenheitszustand. Andere localStorage-Einträge werden nicht ausgelesen oder überschrieben; Theme und Mensa-Auswahl bleiben eigene Einstellungen.
+
 ## Kalender und Datenschutz
 
 - ICS mit gefalteten Zeilen, Text-Escapes, `VTIMEZONE`, ganztägigen und UTC-Terminen.

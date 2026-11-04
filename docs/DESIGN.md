@@ -80,7 +80,7 @@ Fehlende Speiseplantage werden vor dem Gerichte-Abruf anhand der Tagesliste erka
 
 Visuelle Autorität: „Anwesenheit mobil hell@2x.png“ und „Anwesenheit mobil dunkel@2x.png“ sowie die zugehörige Beschreibung. Tokens, IBM Plex Sans und gespeicherte Theme-Auswahl bleiben identisch zum Desktop.
 
-Oben eine sticky App-Leiste mit 56 px Höhe, 28-px-Logo und 44-px-Themeschalter ohne Rahmen. Die Desktop-Sidebar wird mobil zum App-Rahmen umgeordnet; ihre Navigation sitzt fix unten: zwei gleich breite Tabs mit 22-px-Icons, 12-px-Labels, mindestens 60 px Höhe und Safe-Area-Padding. Der aktive Tab erhält aria-current und Akzenttext. Hauptinhalt mit 16 px Seitenrand, 20 px Blockabstand und 80 px plus Safe Area unten.
+Oben eine sticky App-Leiste mit 56 px Höhe, 28-px-Logo und 44-px-Themeschalter ohne Rahmen. Die Desktop-Sidebar wird mobil zum App-Rahmen umgeordnet; ihre Navigation sitzt fix unten: drei gleich breite Tabs (Anwesenheit, Mensa und Export) mit 22-px-Icons, 12-px-Labels, mindestens 60 px Höhe und Safe-Area-Padding. Der aktive Tab erhält aria-current und Akzenttext. Hauptinhalt mit 16 px Seitenrand, 20 px Blockabstand und 80 px plus Safe Area unten.
 
 Titel 26 px/600. Zeitraum-Karte mit zwei Zeilen von mindestens 60 px: Semester und Datumsbereich öffnen ein natives modales Bottom-Sheet; Dateiinfo und Wechselbutton darunter. Das Sheet enthält einen ungespeicherten Entwurf der Zeitraum-/Datums-/Prüfungsfelder. Nur „Übernehmen“ speichert, Schließen oder Escape verwirft den Entwurf. Datumsspannen werden validiert. Sheet-Padding 16 px, Radius oben 16 px, Abdunkelung über dialog::backdrop.
 
@@ -89,3 +89,9 @@ Zusammenfassung als eine Karte, Radius 12 px: freie Fehltermine 56 px/600, darun
 Fächerkopf mit 18-px-Titel und einem 44-px-Menübutton für Aufteilen/Zusammenfügen. Berechnungswahl über volle Breite: 40 px sichtbare Oberfläche innerhalb 44 px hoher Klickflächen. Suche bleibt bei mehr als acht Zeilen verfügbar. Karten mit 12 px Abstand, Radius 12 px, Border, Raster 44px minmax(0,1fr) auto, 8 px Spaltengap und Padding 8px 16px 14px 4px. Checkbox 20 px im 44-px-Label. Titel 14 px/600, Terminlink 13 px und 44 px hoch, Restbudget 28 px/600 mit „übrig“. Balken und direkte Pflicht-/Frei-/Gefehlt-Beschriftung unter den letzten beiden Spalten. Keine mobile Legende. Abgewählte Karten 50 % Deckkraft; Budgetwarnfarben unverändert.
 
 Native Dialoge halten den Fokus. Nach dem Bearbeiten einer Terminliste wird der auslösende Kartenlink wieder fokussiert, nach Fachverwaltung der Menübutton. Menü unterstützt Pfeiltasten, Home/End und die native Escape-/Außenklick-Behandlung des Popovers.
+
+## Export
+
+Eigene Route `#export`, Seitentitel „Export“, aktiv markierter Navigationseintrag auf Desktop und Mobil. Eine maximal 760 px breite Oberfläche mit zwei durch eine Linie getrennten Bereichen: „Daten exportieren“ und „Daten importieren“. Aktueller Kalender und Sicherungsvorschau als einfache Definitionslisten, Download als primärer Button, Dateiauswahl als Rahmenbutton. Alle Flächen nutzen die bestehenden Tokens, IBM Plex Sans und mindestens 44 px hohe Bedienelemente. Mobil 16 px Innenabstand und drei gleich breite untere Tabs.
+
+Die Sicherung wird als versionierte JSON-Datei heruntergeladen. Der Import prüft Größe, Format und Datenstruktur, bevor er eine Vorschau zeigt. Der Button „Daten importieren“ trägt einen Verweis auf den Hinweis, dass die aktuellen Anwesenheitsdaten ersetzt werden. „Verwerfen“ schließt die Vorschau. Status und Fehler werden als Text per role=status ausgegeben; Dateinamen und Vorschauwerte über textContent. Der Import ersetzt den laufenden Zustand erst nach erfolgreichem localStorage-Schreibzugriff. Es werden keine zusätzlichen Netzwerkverbindungen aufgebaut.

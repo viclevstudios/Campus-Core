@@ -106,12 +106,14 @@ async function refresh(force = false) {
   }
 }
 function route() {
-  const mensa = location.hash === '#mensa';
-  $('attendance-view').hidden = mensa;
+  const target = location.hash === '#mensa' ? '#mensa' : location.hash === '#export' ? '#export' : '#overview';
+  const mensa = target === '#mensa';
+  $('attendance-view').hidden = target !== '#overview';
   $('mensa').hidden = !mensa;
-  document.title = `Campus Core – ${mensa ? 'Mensaplan' : 'Anwesenheit'}`;
+  $('export-page').hidden = target !== '#export';
+  document.title = `Campus Core – ${mensa ? 'Mensaplan' : target === '#export' ? 'Export' : 'Anwesenheit'}`;
   document.querySelectorAll('nav .nav-item').forEach(link => {
-    const active = mensa ? link.hash === '#mensa' : location.hash === '#subjects' ? link.hash === '#subjects' : link.hash === '#overview';
+    const active = link.hash === target;
     link.classList.toggle('active', active);
     if (active) link.setAttribute('aria-current', 'page'); else link.removeAttribute('aria-current');
   });

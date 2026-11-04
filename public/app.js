@@ -1,6 +1,8 @@
 import { buildBuckets, semesterOptions, subjectPartition, configurePartition, editableSubjects, combineSubjects, partitionPart, setPartitionDefault, STORAGE_KEY } from './core.js';
 import { demoCalendar } from './demo.js';
 import { mountSubjectPicker } from './subject-picker.js';
+import { freshState, restoreAttendance } from './backup.js';
+import { mountBackupPage } from './backup-view.js';
 
 const $ = id => document.getElementById(id);
 const mobileViewport = window.matchMedia('(max-width: 720px)');
@@ -31,7 +33,6 @@ const icon = name => `<svg viewBox="0 0 24 24" aria-hidden="true">${paths[name] 
 function icons(root = document) { root.querySelectorAll('[data-icon]').forEach(el => { el.innerHTML = icon(el.dataset.icon); }); }
 icons();
 
-const freshState = () => ({ version: 1, events: [], settings: {}, groups: [], absences: {}, excluded: {}, filename: '', demo: false, mode: 'joined', from: '', to: '', period: 'all', includeExams: false, preferences: { attendanceRate: 0.7 } });
 let state = freshState(), storageAvailable = true, buckets = [], activeBucketKey = '', manageSource = '', importing = false;
 try {
   const saved = JSON.parse(localStorage.getItem(STORAGE_KEY) || 'null');
@@ -451,4 +452,13 @@ if (savedSemester && (state.from !== savedSemester.from || state.to !== savedSem
   state.from = savedSemester.from; state.to = savedSemester.to; save();
 }
 periodControls(); syncMobileChrome(); render();
+mountBackupPage({
+  getState: () => state,
+  onImport(imported) {
+    state = restoreAttendance(localStorage, imported);
+    storageAvailable = true;
+    manageSource = ''; activeBucketKey = ''; $('search').value = '';
+    message(''); periodControls(); render();
+  }
+});
 if (!storageAvailable) message('Der lokale Speicher ist nicht verfügbar. Die App funktioniert für diese Sitzung; Änderungen bleiben beim Neuladen möglicherweise nicht erhalten.', true);
